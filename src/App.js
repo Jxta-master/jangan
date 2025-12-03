@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -22,7 +22,6 @@ const firebaseConfig = {
   appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
   measurementId: "G-8XRXFQ7HV4"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -56,38 +55,67 @@ const getLogTitle = (model, process) => {
   }
 };
 
+// --- Inspection Specs by Vehicle (차종별 규격 데이터) ---
+const INSPECTION_SPECS = {
+  'DN8': [
+    { part: 'FRT LH A', spec: '1176±5' },
+    { part: 'FRT RH A', spec: '1176±5' },
+    { part: 'RR LH A', spec: '644±5' },
+    { part: 'RR LH C', spec: '396±3' },
+    { part: 'RR LH D', spec: '293±3' },
+    { part: 'RR RH A', spec: '644±5' },
+    { part: 'RR RH C', spec: '396±3' },
+    { part: 'RR RH D', spec: '293±3' },
+  ],
+  'J100': [
+    { part: 'RR A', spec: '708±5' },
+    { part: 'RR C', spec: '388±5' },
+    { part: 'RR D', spec: '273±3' },
+  ],
+  'J120': [
+    { part: 'A', spec: '650±5' },
+    { part: 'E', spec: '250±3' },
+  ],
+  'O100': [
+    { part: 'A', spec: '753±5' },
+    { part: 'D', spec: '270±3' },
+    { part: 'B1', spec: '258±3' },
+  ]
+};
+
 // --- Form Templates ---
 const FORM_TEMPLATES = {
+  // 1. 소재준비
   material: {
     columns: [
       { key: 'qty', label: '작업수량', type: 'number' },
+      { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
       { key: 'spec_start', label: '초물(길이)', type: 'text' },
       { key: 'spec_mid', label: '중물(길이)', type: 'text' },
       { key: 'spec_end', label: '종물(길이)', type: 'text' },
       { key: 'lot', label: 'Lot No', type: 'text' }
     ],
     rows: (model) => {
-      // KGM 차종 제외하고는 상세 구분 적용
       if (['J100', 'J120', 'O100'].includes(model)) return ['J100 RR', 'J120', 'O100', '기타'];
       return ['FRT A', 'FRT B', 'RR A', 'RR B', 'RR C', 'RR D'];
     }
   },
+  // 2. 프레스
   press: {
     columns: [
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text' }, // 금형No 대신 FMB LOT
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text' },
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
       { key: 'lot_d', label: 'D소재 LOT', type: 'text' },
+      { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
-      { key: 'defect_drop', label: '떨어짐', type: 'number', isDefect: true },
-      { key: 'defect_push', label: '밀림', type: 'number', isDefect: true },
-      { key: 'defect_step', label: '단차', type: 'number', isDefect: true },
-      { key: 'defect_short', label: '양부족', type: 'number', isDefect: true },
+      { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
       { key: 'defect_bubble', label: '기포', type: 'number', isDefect: true },
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
+  // 3. 후가공
   post: {
     columns: [
       { key: 'qty', label: '생산수량', type: 'number' },
@@ -95,12 +123,11 @@ const FORM_TEMPLATES = {
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
       { key: 'lot_d', label: 'D소재 LOT', type: 'text' },
-      { key: 'defect_finish', label: '사상불량', type: 'number', isDefect: true },
-      { key: 'defect_trans', label: '운반파손', type: 'number', isDefect: true },
-      { key: 'defect_poll', label: '외면오염', type: 'number', isDefect: true },
+      { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
+  // 4. 검사
   inspection: {
     columns: [
       { key: 'check_qty', label: '검사수량', type: 'number' },
@@ -108,9 +135,6 @@ const FORM_TEMPLATES = {
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
       { key: 'lot_d', label: 'D소재 LOT', type: 'text' },
-      { key: 'dim_start', label: '치수(초)', type: 'text' },
-      { key: 'dim_mid', label: '치수(중)', type: 'text' },
-      { key: 'dim_end', label: '치수(종)', type: 'text' },
       { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true }
     ],
     rows: (model) => {
@@ -143,6 +167,14 @@ const exportToCSV = (data) => {
         });
       });
     }
+    // 치수 데이터 키 추가
+    if (row.measurements) {
+      Object.keys(row.measurements).forEach(partKey => {
+        ['x1', 'x2', 'x3', 'x4', 'x5'].forEach(x => {
+          allDetailKeys.add(`MEASURE_${partKey}_${x}`);
+        });
+      });
+    }
   });
   
   const detailHeaders = Array.from(allDetailKeys).sort();
@@ -163,6 +195,12 @@ const exportToCSV = (data) => {
     ];
 
     const detailValues = detailHeaders.map(header => {
+      if (header.startsWith('MEASURE_')) {
+        const parts = header.split('_'); 
+        const xKey = parts.pop();
+        const partKey = parts.slice(1).join('_');
+        return row.measurements?.[partKey]?.[xKey] || '';
+      }
       const [rowKey, colKey] = header.split(/_(.+)/);
       return row.details?.[rowKey]?.[colKey] || '';
     });
@@ -378,11 +416,71 @@ const DynamicTableForm = ({ vehicle, processType, onChange }) => {
   );
 };
 
+// --- Dimension Inspection Form (Combined for DN8 & KGM) ---
+const DimensionTableForm = ({ vehicle, onChange }) => {
+  const [measureData, setMeasureData] = useState({});
+  const specs = INSPECTION_SPECS[vehicle] || [];
+
+  const handleMeasureChange = (part, xKey, value) => {
+    const newData = { ...measureData };
+    if (!newData[part]) newData[part] = {};
+    newData[part][xKey] = value;
+    setMeasureData(newData);
+    onChange(newData);
+  };
+
+  if (specs.length === 0) return null;
+
+  return (
+    <div className="mt-6 border border-black bg-white">
+      <div className="bg-gray-800 text-white px-4 py-2 border-b border-black font-bold text-sm flex items-center gap-2">
+        <Ruler size={16} />
+        중요 치수(길이) 검사현황 ({vehicle})
+      </div>
+      <table className="w-full text-sm border-collapse min-w-[600px]">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border border-black px-2 py-2 text-center font-bold">구분</th>
+            <th className="border border-black px-2 py-2 text-center font-bold">규격 (SPEC)</th>
+            <th className="border border-black px-2 py-2 text-center font-bold w-16">x1</th>
+            <th className="border border-black px-2 py-2 text-center font-bold w-16">x2</th>
+            <th className="border border-black px-2 py-2 text-center font-bold w-16">x3</th>
+            <th className="border border-black px-2 py-2 text-center font-bold w-16">x4</th>
+            <th className="border border-black px-2 py-2 text-center font-bold w-16">x5</th>
+          </tr>
+        </thead>
+        <tbody>
+          {specs.map((item) => (
+            <tr key={item.part}>
+              <td className="border border-black px-2 py-1 text-center font-bold bg-gray-50 text-xs">
+                {item.part}
+              </td>
+              <td className="border border-black px-2 py-1 text-center font-medium">
+                {item.spec}
+              </td>
+              {['x1', 'x2', 'x3', 'x4', 'x5'].map((x) => (
+                <td key={x} className="border border-black p-0 h-8">
+                  <input
+                    type="text"
+                    className="w-full h-full text-center outline-none bg-transparent"
+                    onChange={(e) => handleMeasureChange(item.part, x, e.target.value)}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 const WorkerDashboard = ({ user, db, appId }) => {
   const [vehicle, setVehicle] = useState('');
   const [processType, setProcessType] = useState('');
   const [notes, setNotes] = useState('');
   const [formDetails, setFormDetails] = useState({});
+  const [measurements, setMeasurements] = useState({}); // Store measurement data
   const [totalQty, setTotalQty] = useState(0);
   const [totalDefect, setTotalDefect] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -409,6 +507,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
         processType: processType,
         logTitle: logTitle,
         details: formDetails,
+        measurements: measurements, // Save measurement data
         productionQty: totalQty,
         defectQty: totalDefect,
         notes: notes,
@@ -419,6 +518,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
       setNotes('');
       setVehicle(''); 
       setProcessType('');
+      setMeasurements({});
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error) {
       console.error("Error adding document: ", error);
@@ -521,6 +621,11 @@ const WorkerDashboard = ({ user, db, appId }) => {
               onChange={handleFormChange} 
             />
 
+            {/* 치수 검사 테이블 (DN8, J100, J120, O100 등 지원) */}
+            {processType === '검사' && INSPECTION_SPECS[vehicle] && (
+              <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} />
+            )}
+
             <div className="border border-black">
               <div className="bg-gray-100 border-b border-black px-3 py-1 font-bold text-xs text-gray-700">
                 특이사항 및 인수인계
@@ -619,6 +724,12 @@ const AdminDashboard = ({ db, appId }) => {
             </div>
           );
         })}
+        {/* 치수 데이터가 있으면 표시 */}
+        {log.measurements && Object.keys(log.measurements).length > 0 && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <span className="font-bold text-blue-600 block mb-1">치수 검사 데이터 있음</span>
+          </div>
+        )}
       </div>
     );
   };
