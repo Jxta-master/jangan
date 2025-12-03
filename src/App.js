@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, PlusCircle, AlertCircle, Lock, Calendar, Save, Printer
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -67,13 +67,14 @@ const FORM_TEMPLATES = {
       { key: 'lot', label: 'Lot No', type: 'text' }
     ],
     rows: (model) => {
+      // KGM 차종 제외하고는 상세 구분 적용
       if (['J100', 'J120', 'O100'].includes(model)) return ['J100 RR', 'J120', 'O100', '기타'];
       return ['FRT A', 'FRT B', 'RR A', 'RR B', 'RR C', 'RR D'];
     }
   },
   press: {
     columns: [
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text' },
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text' }, // 금형No 대신 FMB LOT
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
@@ -282,8 +283,8 @@ const LoginScreen = ({ onLogin }) => {
           )}
 
           {error && (
-            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100">
-              {error}
+            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
+              <AlertCircle size={14} /> {error}
             </div>
           )}
 
@@ -309,7 +310,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange }) => {
 
   useEffect(() => {
     setFormData({});
-    onChange({}, 0, 0); 
+    onChange({}, 0, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle, processType]);
 
   const handleCellChange = (rowLabel, colKey, value, isDefect, colType) => {
@@ -336,8 +338,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange }) => {
   };
 
   return (
-    <div className="border border-black bg-white">
-      <table className="w-full text-sm border-collapse">
+    <div className="overflow-x-auto border border-black bg-white">
+      <table className="w-full text-sm border-collapse min-w-[800px]">
         <thead>
           <tr className="bg-gray-100">
             <th className="border border-black px-2 py-2 text-center w-24 font-bold text-gray-800">구분</th>
@@ -428,10 +430,10 @@ const WorkerDashboard = ({ user, db, appId }) => {
 
   return (
     <div className="max-w-[210mm] mx-auto my-8 bg-white shadow-2xl min-h-[297mm] relative text-black print:shadow-none print:m-0">
-      {/* Paper Header / Form Title */}
       <div className="p-8 pb-4">
         <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-          <h1 className="text-3xl font-extrabold tracking-widest text-black">
+          <h1 className="text-3xl font-extrabold tracking-widest text-black flex items-center gap-3">
+            <FileText className="w-8 h-8" />
             작 업 일 보
           </h1>
           <div className="text-right">
@@ -453,7 +455,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
           </div>
         </div>
 
-        {/* Basic Info Grid (Excel style) */}
         <div className="border border-black mb-6">
           <div className="flex border-b border-black">
             <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
@@ -477,12 +478,12 @@ const WorkerDashboard = ({ user, db, appId }) => {
               <select
                 value={vehicle}
                 onChange={(e) => setVehicle(e.target.value)}
-                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center"
+                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer hover:bg-blue-50"
               >
                 <option value="">[ 선 택 ]</option>
                 {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              {!vehicle && <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-gray-400 text-xs">▼ 선택필요</div>}
+              <Truck className="absolute right-2 top-3 text-gray-400 pointer-events-none w-4 h-4" />
             </div>
             <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
               공정
@@ -491,36 +492,35 @@ const WorkerDashboard = ({ user, db, appId }) => {
               <select
                 value={processType}
                 onChange={(e) => setProcessType(e.target.value)}
-                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center"
+                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer hover:bg-blue-50"
               >
                 <option value="">[ 선 택 ]</option>
                 {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              {!processType && <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-gray-400 text-xs">▼ 선택필요</div>}
+              <Factory className="absolute right-2 top-3 text-gray-400 pointer-events-none w-4 h-4" />
             </div>
           </div>
         </div>
 
-        {/* Dynamic Form Content */}
         {vehicle && processType ? (
           <div className="space-y-6">
-            {/* Title Bar */}
             <div className="flex justify-between items-center bg-gray-800 text-white px-4 py-2 border border-black">
-              <span className="font-bold text-sm">□ {logTitle}</span>
+              <span className="font-bold text-sm flex items-center gap-2">
+                <ClipboardList size={16} />
+                {logTitle}
+              </span>
               <div className="text-xs space-x-4 font-mono">
                 <span>합격: {totalQty.toLocaleString()}</span>
                 <span className="text-red-300">불량: {totalDefect.toLocaleString()}</span>
               </div>
             </div>
 
-            {/* The Excel-like Grid */}
             <DynamicTableForm 
               vehicle={vehicle} 
               processType={processType} 
               onChange={handleFormChange} 
             />
 
-            {/* Notes Field */}
             <div className="border border-black">
               <div className="bg-gray-100 border-b border-black px-3 py-1 font-bold text-xs text-gray-700">
                 특이사항 및 인수인계
@@ -534,16 +534,20 @@ const WorkerDashboard = ({ user, db, appId }) => {
               ></textarea>
             </div>
 
-            {/* Action Button */}
             <div className="flex justify-end pt-4">
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className={`px-8 py-3 font-bold text-white shadow-lg flex items-center gap-2 border border-black
+                className={`px-8 py-3 font-bold text-white shadow-lg flex items-center gap-2 border border-black transition active:translate-y-1
                   ${isSubmitting ? 'bg-gray-400' : 'bg-blue-800 hover:bg-blue-900'}
                 `}
               >
-                {isSubmitting ? '저장 중...' : '일보 저장'}
+                {isSubmitting ? '저장 중...' : (
+                  <>
+                    <Save size={18} />
+                    일보 저장
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -556,7 +560,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
       </div>
 
       {submitSuccess && (
-        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50">
+        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full">
           <CheckCircle size={18} className="text-green-400" />
           <span className="font-bold text-sm">저장 완료</span>
         </div>
@@ -620,7 +624,7 @@ const AdminDashboard = ({ db, appId }) => {
         
         <button
           onClick={() => exportToCSV(logs)}
-          className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 font-bold text-sm shadow transition"
+          className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 font-bold text-sm shadow transition rounded"
         >
           <FileSpreadsheet size={16} />
           Excel 다운로드
