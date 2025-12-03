@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
-  getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp 
+  getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc 
 } from 'firebase/firestore';
 import { 
   getAuth, signInAnonymously 
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [중요] 1단계에서 복사해 둔 '본인의 Firebase 설정값'으로 이 부분을 교체하세요.
+// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -591,6 +591,18 @@ const AdminDashboard = ({ db, appId }) => {
     return () => unsubscribe();
   }, [db]);
 
+  const handleDelete = async (id) => {
+    if (window.confirm('정말 이 작업일보를 삭제하시겠습니까?')) {
+      try {
+        await deleteDoc(doc(db, 'work_logs', id));
+        alert('삭제되었습니다.');
+      } catch (error) {
+        console.error("Error deleting document: ", error);
+        alert('삭제 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
   const renderDetailedQty = (log) => {
     if (!log.details) return '-';
     const qtyKey = log.processType === '검사' ? 'check_qty' : 'qty';
@@ -641,14 +653,15 @@ const AdminDashboard = ({ db, appId }) => {
                 <th className="px-4 py-3 border-r border-gray-300">내역</th>
                 <th className="px-4 py-3 border-r border-gray-300 w-48">상세 수량</th>
                 <th className="px-4 py-3 border-r border-gray-300 text-right text-red-600">불량</th>
-                <th className="px-4 py-3">특이사항</th>
+                <th className="px-4 py-3 border-r border-gray-300">특이사항</th>
+                <th className="px-4 py-3 text-center">관리</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
+                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
               ) : logs.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">데이터가 없습니다.</td></tr>
+                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-400">데이터가 없습니다.</td></tr>
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-200 hover:bg-gray-50">
@@ -670,8 +683,17 @@ const AdminDashboard = ({ db, appId }) => {
                     <td className="px-4 py-3 border-r border-gray-200 text-right text-red-600 font-bold align-top">
                       {log.defectQty > 0 ? log.defectQty : '-'}
                     </td>
-                    <td className="px-4 py-3 align-top max-w-xs truncate text-gray-500">
+                    <td className="px-4 py-3 border-r border-gray-200 align-top max-w-xs truncate text-gray-500">
                       {log.notes}
+                    </td>
+                    <td className="px-4 py-3 align-top text-center">
+                      <button
+                        onClick={() => handleDelete(log.id)}
+                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition"
+                        title="삭제"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </td>
                   </tr>
                 ))
