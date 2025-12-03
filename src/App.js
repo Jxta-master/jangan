@@ -4,7 +4,7 @@ import {
   getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp 
 } from 'firebase/firestore';
 import { 
-  getAuth, signInAnonymously, signInWithCustomToken 
+  getAuth, signInAnonymously 
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [중요] 실제 운영 시에는 본인의 Firebase 키값으로 변경해야 합니다.
+// [중요] 1단계에서 복사해 둔 '본인의 Firebase 설정값'으로 이 부분을 교체하세요.
+// 예: const firebaseConfig = { apiKey: "AIza...", ... };
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -22,10 +23,14 @@ const firebaseConfig = {
   appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
   measurementId: "G-8XRXFQ7HV4"
 };
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// 로컬 환경용 고정 App ID (원하는 이름으로 변경 가능)
+const appId = 'mes-production-v1';
 
 // --- Constants & Helper Functions ---
 const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
@@ -52,9 +57,8 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- Form Templates (엑셀 양식 모사) ---
+// --- Form Templates ---
 const FORM_TEMPLATES = {
-  // 1. 소재준비 (Material)
   material: {
     columns: [
       { key: 'qty', label: '작업수량', type: 'number' },
@@ -66,10 +70,9 @@ const FORM_TEMPLATES = {
     rows: (model) => {
       if (['J100', 'J120', 'O100'].includes(model)) return ['J100 RR', 'J120', 'O100', '기타'];
       if (model === 'GN7') return ['FRT', 'RR', '기타'];
-      return ['FRT', 'RR', 'LF A', 'DE FRT', '기타']; // DN8 등 기본값
+      return ['FRT', 'RR', 'LF A', 'DE FRT', '기타'];
     }
   },
-  // 2. 프레스 (Press) - LOT 필드 4가지(A,B,C,D) 적용
   press: {
     columns: [
       { key: 'mold_no', label: '금형No', type: 'text' },
@@ -86,7 +89,6 @@ const FORM_TEMPLATES = {
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
-  // 3. 후가공 (Post-processing) - LOT 필드 4가지 추가
   post: {
     columns: [
       { key: 'qty', label: '생산수량', type: 'number' },
@@ -100,7 +102,6 @@ const FORM_TEMPLATES = {
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
-  // 4. 검사 (Inspection) - LOT 필드 4가지 추가
   inspection: {
     columns: [
       { key: 'check_qty', label: '검사수량', type: 'number' },
@@ -125,17 +126,15 @@ const getFormType = (process) => {
   if (process.includes('프레스')) return 'press';
   if (process.includes('후가공')) return 'post';
   if (process.includes('검사')) return 'inspection';
-  return 'material'; // fallback
+  return 'material';
 };
 
-// CSV Export Logic (Expanded for detailed rows)
 const exportToCSV = (data) => {
   if (!data || data.length === 0) {
     alert("내보낼 데이터가 없습니다.");
     return;
   }
 
-  // Collect all unique keys from details for dynamic columns
   const allDetailKeys = new Set();
   data.forEach(row => {
     if (row.details) {
@@ -165,7 +164,7 @@ const exportToCSV = (data) => {
     ];
 
     const detailValues = detailHeaders.map(header => {
-      const [rowKey, colKey] = header.split(/_(.+)/); // Split only on first underscore
+      const [rowKey, colKey] = header.split(/_(.+)/);
       return row.details?.[rowKey]?.[colKey] || '';
     });
 
@@ -186,9 +185,9 @@ const exportToCSV = (data) => {
 
 const LoginScreen = ({ onLogin }) => {
   const [role, setRole] = useState('worker');
-  const [name, setName] = useState(''); // For worker
-  const [adminId, setAdminId] = useState(''); // For admin
-  const [password, setPassword] = useState(''); // For admin
+  const [name, setName] = useState('');
+  const [adminId, setAdminId] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -202,7 +201,6 @@ const LoginScreen = ({ onLogin }) => {
         setError('이름을 입력해주세요.');
       }
     } else {
-      // Simple Mock Validation for Admin
       if (adminId === 'admin' && password === '1234') {
         onLogin({ name: '관리자', role });
       } else {
@@ -222,7 +220,6 @@ const LoginScreen = ({ onLogin }) => {
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">MES 시스템 로그인</h2>
         <p className="text-center text-gray-500 mb-6">접속 권한을 선택하세요</p>
         
-        {/* Role Selection Tabs */}
         <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
           <button
             type="button"
@@ -313,7 +310,6 @@ const LoginScreen = ({ onLogin }) => {
   );
 };
 
-// --- Dynamic Form Component ---
 const DynamicTableForm = ({ vehicle, processType, onChange }) => {
   const formType = getFormType(processType);
   const template = FORM_TEMPLATES[formType];
@@ -321,7 +317,6 @@ const DynamicTableForm = ({ vehicle, processType, onChange }) => {
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
-    // Reset data when vehicle/process changes
     setFormData({});
     onChange({}, 0, 0); 
   }, [vehicle, processType]);
@@ -330,12 +325,10 @@ const DynamicTableForm = ({ vehicle, processType, onChange }) => {
     const newData = { ...formData };
     if (!newData[rowLabel]) newData[rowLabel] = {};
     
-    // Convert to number if input type is number
     const finalValue = colType === 'number' ? (Number(value) || 0) : value;
     newData[rowLabel][colKey] = finalValue;
     setFormData(newData);
 
-    // Calculate totals
     let totalQty = 0;
     let totalDefect = 0;
 
@@ -415,12 +408,13 @@ const WorkerDashboard = ({ user, db, appId }) => {
     
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'work_logs_v2'), {
+      await addDoc(collection(db, 'work_logs'), {
+        appId: appId,
         workerName: user.name,
         vehicleModel: vehicle,
         processType: processType,
         logTitle: logTitle,
-        details: formDetails, // Store the complex table data
+        details: formDetails,
         productionQty: totalQty,
         defectQty: totalDefect,
         notes: notes,
@@ -429,7 +423,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
       
       setSubmitSuccess(true);
       setNotes('');
-      // Force reset details by remounting or clearing via key if needed
       setVehicle(''); 
       setProcessType('');
       setTimeout(() => setSubmitSuccess(false), 3000);
@@ -458,7 +451,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Top Selectors */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">차종</label>
@@ -491,7 +483,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
             </div>
           </div>
 
-          {/* Dynamic Form Area */}
           {vehicle && processType ? (
             <div className="animate-fade-in space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-gray-200">
@@ -566,7 +557,7 @@ const AdminDashboard = ({ db, appId }) => {
 
   useEffect(() => {
     const q = query(
-      collection(db, 'artifacts', appId, 'public', 'data', 'work_logs_v2'),
+      collection(db, 'work_logs'),
       orderBy('timestamp', 'desc')
     );
 
@@ -580,7 +571,7 @@ const AdminDashboard = ({ db, appId }) => {
     });
 
     return () => unsubscribe();
-  }, [db, appId]);
+  }, [db]);
 
   return (
     <div className="space-y-6">
@@ -646,11 +637,8 @@ export default function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
+      // 로컬 환경용 익명 로그인 (간편 접속)
+      await signInAnonymously(auth);
     };
     initAuth();
     
