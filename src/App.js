@@ -190,7 +190,7 @@ const LoginScreen = ({ onLogin }) => {
             <ClipboardList className="w-10 h-10 text-white" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">MES 작업관리</h2>
+        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
         <p className="text-center text-slate-500 mb-6 text-sm">시스템 접속을 위해 로그인해주세요</p>
         
         <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
