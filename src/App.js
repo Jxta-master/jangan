@@ -153,6 +153,127 @@ const getFormType = (process) => {
 
 // --- Components ---
 
+const LoginScreen = ({ onLogin }) => {
+  // [관리자 비밀번호 설정] 여기서 비밀번호를 변경하세요.
+  const ADMIN_PASSWORD = '1234abc'; 
+
+  const [role, setRole] = useState('worker');
+  const [name, setName] = useState('');
+  const [adminId, setAdminId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (role === 'worker') {
+      if (name.trim()) {
+        onLogin({ name, role });
+      } else {
+        setError('이름을 입력해주세요.');
+      }
+    } else {
+      if (adminId === 'admin' && password === ADMIN_PASSWORD) {
+        onLogin({ name: '관리자', role });
+      } else {
+        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
+        <div className="flex justify-center mb-6">
+          <div className="bg-blue-700 p-3 rounded-lg">
+            <ClipboardList className="w-10 h-10 text-white" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">MES 작업관리</h2>
+        <p className="text-center text-slate-500 mb-6 text-sm">시스템 접속을 위해 로그인해주세요</p>
+        
+        <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
+          <button
+            type="button"
+            onClick={() => { setRole('worker'); setError(''); }}
+            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
+              role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            작업자
+          </button>
+          <button
+            type="button"
+            onClick={() => { setRole('admin'); setError(''); }}
+            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
+              role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            관리자
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {role === 'worker' ? (
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="성명 입력"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="admin"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="****"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm
+              ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}
+            `}
+          >
+            로그인
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const formType = getFormType(processType);
   const template = FORM_TEMPLATES[formType];
@@ -402,6 +523,205 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
   );
 };
 
+const WorkerDashboard = ({ user, db, appId }) => {
+  const [vehicle, setVehicle] = useState('');
+  const [processType, setProcessType] = useState('');
+  const [notes, setNotes] = useState('');
+  const [formDetails, setFormDetails] = useState({});
+  const [measurements, setMeasurements] = useState({}); // Store measurement data
+  const [totalQty, setTotalQty] = useState(0);
+  const [totalDefect, setTotalDefect] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const logTitle = useMemo(() => getLogTitle(vehicle, processType), [vehicle, processType]);
+
+  const handleFormChange = (details, qty, defect) => {
+    setFormDetails(details);
+    setTotalQty(qty);
+    setTotalDefect(defect);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!vehicle || !processType) return;
+    
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'work_logs'), {
+        appId: appId,
+        workerName: user.name,
+        vehicleModel: vehicle,
+        processType: processType,
+        logTitle: logTitle,
+        details: formDetails,
+        measurements: measurements, // Save measurement data
+        productionQty: totalQty,
+        defectQty: totalDefect,
+        notes: notes,
+        timestamp: serverTimestamp(),
+      });
+      
+      setSubmitSuccess(true);
+      setNotes('');
+      setVehicle(''); 
+      setProcessType('');
+      setMeasurements({});
+      setTimeout(() => setSubmitSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-[210mm] mx-auto my-8 bg-white shadow-2xl min-h-[297mm] relative text-black print:shadow-none print:m-0">
+      <div className="p-8 pb-4">
+        <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-6">
+          <h1 className="text-3xl font-extrabold tracking-widest text-black flex items-center gap-3">
+            <FileText className="w-8 h-8" />
+            작 업 일 보
+          </h1>
+          <div className="text-right">
+            <p className="text-xs font-bold text-gray-600 mb-1">결 재</p>
+            <div className="flex border border-black">
+              <div className="w-16 border-r border-black">
+                <div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">작 성</div>
+                <div className="h-12 flex items-center justify-center text-sm font-bold">{user.name}</div>
+              </div>
+              <div className="w-16 border-r border-black">
+                <div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">검 토</div>
+                <div className="h-12"></div>
+              </div>
+              <div className="w-16">
+                <div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">승 인</div>
+                <div className="h-12"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-black mb-6">
+          <div className="flex border-b border-black">
+            <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
+              작업일자
+            </div>
+            <div className="flex-1 flex items-center px-3 text-sm font-medium">
+              {new Date().toLocaleDateString()}
+            </div>
+            <div className="w-24 bg-gray-100 border-l border-r border-black flex items-center justify-center font-bold text-sm py-2">
+              작업자
+            </div>
+            <div className="flex-1 flex items-center px-3 text-sm font-medium">
+              {user.name}
+            </div>
+          </div>
+          <div className="flex">
+            <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
+              차종
+            </div>
+            <div className="flex-1 border-r border-black relative">
+              <select
+                value={vehicle}
+                onChange={(e) => setVehicle(e.target.value)}
+                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer hover:bg-blue-50"
+              >
+                <option value="">[ 선 택 ]</option>
+                {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <Truck className="absolute right-2 top-3 text-gray-400 pointer-events-none w-4 h-4" />
+            </div>
+            <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
+              공정
+            </div>
+            <div className="flex-1 relative">
+              <select
+                value={processType}
+                onChange={(e) => setProcessType(e.target.value)}
+                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer hover:bg-blue-50"
+              >
+                <option value="">[ 선 택 ]</option>
+                {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <Factory className="absolute right-2 top-3 text-gray-400 pointer-events-none w-4 h-4" />
+            </div>
+          </div>
+        </div>
+
+        {vehicle && processType ? (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-gray-800 text-white px-4 py-2 border border-black">
+              <span className="font-bold text-sm flex items-center gap-2">
+                <ClipboardList size={16} />
+                {logTitle}
+              </span>
+              <div className="text-xs space-x-4 font-mono">
+                <span>합격: {totalQty.toLocaleString()}</span>
+                <span className="text-red-300">불량: {totalDefect.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <DynamicTableForm 
+              vehicle={vehicle} 
+              processType={processType} 
+              onChange={handleFormChange} 
+            />
+
+            {/* 치수 검사 테이블 (DN8, J100, J120, O100 등 지원) */}
+            {processType === '검사' && INSPECTION_SPECS[vehicle] && (
+              <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} />
+            )}
+
+            <div className="border border-black">
+              <div className="bg-gray-100 border-b border-black px-3 py-1 font-bold text-xs text-gray-700">
+                특이사항 및 인수인계
+              </div>
+              <textarea
+                rows="4"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full p-3 text-sm outline-none resize-none"
+                placeholder="내용을 입력하세요."
+              ></textarea>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={`px-8 py-3 font-bold text-white shadow-lg flex items-center gap-2 border border-black transition active:translate-y-1
+                  ${isSubmitting ? 'bg-gray-400' : 'bg-blue-800 hover:bg-blue-900'}
+                `}
+              >
+                {isSubmitting ? '저장 중...' : (
+                  <>
+                    <Save size={18} />
+                    일보 저장
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="h-64 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
+            <FileText className="w-12 h-12 mb-2 opacity-20" />
+            <p className="text-sm">상단에서 차종과 공정을 선택하면<br/>입력 양식이 표시됩니다.</p>
+          </div>
+        )}
+      </div>
+
+      {submitSuccess && (
+        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full">
+          <CheckCircle size={18} className="text-green-400" />
+          <span className="font-bold text-sm">저장 완료</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminDashboard = ({ db, appId }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -580,9 +900,6 @@ const AdminDashboard = ({ db, appId }) => {
     </div>
   );
 };
-
-// ... (LoginScreen, WorkerDashboard, App components remain same but included in full code above) ...
-// (Since I need to provide full code, I will just continue from AdminDashboard to end in the code block above to keep it consistent)
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
