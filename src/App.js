@@ -22,6 +22,7 @@ const firebaseConfig = {
   appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
   measurementId: "G-8XRXFQ7HV4"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -85,7 +86,7 @@ const INSPECTION_SPECS = {
 
 // --- Form Templates ---
 const FORM_TEMPLATES = {
-  // 1. 소재준비
+  // 1. 소재준비: 차종별 구분 항목 커스터마이징 적용
   material: {
     columns: [
       { key: 'qty', label: '작업수량', type: 'number' },
@@ -96,7 +97,12 @@ const FORM_TEMPLATES = {
       { key: 'lot', label: 'Lot No', type: 'text' }
     ],
     rows: (model) => {
-      if (['J100', 'J120', 'O100'].includes(model)) return ['J100 RR', 'J120', 'O100', '기타'];
+      // 요청사항 반영: KGM 차종별 세부 항목
+      if (model === 'J100') return ['J100 A소재', 'J100 C소재', 'J100 D소재'];
+      if (model === 'J120') return ['J120 A소재', 'D소재'];
+      if (model === 'O100') return ['O100 A소재', 'O100 B1소재', 'O100 D소재'];
+      
+      // 그 외 일반 차종 (DN8, GN7 등)
       return ['FRT A', 'FRT B', 'RR A', 'RR B', 'RR C', 'RR D'];
     }
   },
