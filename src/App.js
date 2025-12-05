@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
+// [적용 완료] 요청하신 Firebase 키값으로 설정되었습니다.
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -22,6 +22,7 @@ const firebaseConfig = {
   appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
   measurementId: "G-8XRXFQ7HV4"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -56,6 +57,7 @@ const getLogTitle = (model, process) => {
 };
 
 // --- Inspection Specs by Vehicle (차종별 규격 데이터) ---
+// DN8은 기존 그대로, J100/J120/O100은 LH/RH 구분에 맞춰서 재구성했습니다.
 const INSPECTION_SPECS = {
   'DN8': [
     { part: 'FRT LH A', spec: '1176±5' },
@@ -67,19 +69,30 @@ const INSPECTION_SPECS = {
     { part: 'RR RH C', spec: '396±3' },
     { part: 'RR RH D', spec: '293±3' },
   ],
+  // J100: LH/RH 구분 (규격 동일 가정, 다르면 수정 가능)
   'J100': [
-    { part: 'RR A', spec: '708±5' },
-    { part: 'RR C', spec: '388±5' },
-    { part: 'RR D', spec: '273±3' },
+    { part: 'J100 LH RR A', spec: '708±5' },
+    { part: 'J100 LH RR C', spec: '388±5' },
+    { part: 'J100 LH RR D', spec: '273±3' },
+    { part: 'J100 RH RR A', spec: '708±5' },
+    { part: 'J100 RH RR C', spec: '388±5' },
+    { part: 'J100 RH RR D', spec: '273±3' },
   ],
+  // J120: LH/RH 구분
   'J120': [
-    { part: 'A', spec: '650±5' },
-    { part: 'E', spec: '250±3' },
+    { part: 'J120 LH A', spec: '650±5' },
+    { part: 'J120 LH E', spec: '250±3' },
+    { part: 'J120 RH A', spec: '650±5' },
+    { part: 'J120 RH E', spec: '250±3' },
   ],
+  // O100: LH/RH 구분
   'O100': [
-    { part: 'A', spec: '753±5' },
-    { part: 'D', spec: '270±3' },
-    { part: 'B1', spec: '258±3' },
+    { part: 'O100 LH A', spec: '753±5' },
+    { part: 'O100 LH D', spec: '270±3' },
+    { part: 'O100 LH B1', spec: '258±3' },
+    { part: 'O100 RH A', spec: '753±5' },
+    { part: 'O100 RH D', spec: '270±3' },
+    { part: 'O100 RH B1', spec: '258±3' },
   ]
 };
 
@@ -95,12 +108,9 @@ const FORM_TEMPLATES = {
       { key: 'lot', label: 'Lot No', type: 'text' }
     ],
     rows: (model) => {
-      // 요청하신 차종별 구분 항목 적용
       if (model === 'J100') return ['J100 A소재', 'J100 C소재', 'J100 D소재'];
       if (model === 'J120') return ['J120 A소재', 'J120 D소재'];
       if (model === 'O100') return ['O100 A소재', 'O100 B1소재', 'O100 D소재'];
-      
-      // 그 외 일반 차종 (DN8, GN7 등)
       return ['FRT A', 'FRT B', 'RR A', 'RR B', 'RR C', 'RR D'];
     }
   },
@@ -139,7 +149,12 @@ const FORM_TEMPLATES = {
       { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true }
     ],
     rows: (model) => {
-      if (isKGM(model)) return ['J100 L/R', 'J120 L/R', 'O100 L/R'];
+      // [요청 반영] 검사일보 구분 항목 변경 (J100, J120, O100)
+      if (model === 'J100') return ['J100 LH', 'J100 RH'];
+      if (model === 'J120') return ['J120 LH', 'J120 RH'];
+      if (model === 'O100') return ['O100 LH', 'O100 RH'];
+      
+      // 그 외 (DN8, GN7 등)
       return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'];
     }
   }
@@ -154,6 +169,126 @@ const getFormType = (process) => {
 };
 
 // --- Components ---
+
+const LoginScreen = ({ onLogin }) => {
+  const ADMIN_PASSWORD = '1234abc'; 
+
+  const [role, setRole] = useState('worker');
+  const [name, setName] = useState('');
+  const [adminId, setAdminId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (role === 'worker') {
+      if (name.trim()) {
+        onLogin({ name, role });
+      } else {
+        setError('이름을 입력해주세요.');
+      }
+    } else {
+      if (adminId === 'admin' && password === ADMIN_PASSWORD) {
+        onLogin({ name: '관리자', role });
+      } else {
+        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
+        <div className="flex justify-center mb-6">
+          <div className="bg-blue-700 p-3 rounded-lg">
+            <ClipboardList className="w-10 h-10 text-white" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
+        <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 넣고 로그인을 눌러주세요</p>
+        
+        <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
+          <button
+            type="button"
+            onClick={() => { setRole('worker'); setError(''); }}
+            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
+              role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            작업자
+          </button>
+          <button
+            type="button"
+            onClick={() => { setRole('admin'); setError(''); }}
+            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
+              role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            관리자
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {role === 'worker' ? (
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="성명 입력"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="admin"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="****"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm
+              ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}
+            `}
+          >
+            로그인
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const formType = getFormType(processType);
@@ -170,8 +305,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
         Object.keys(initialData[r]).forEach(c => {
           const val = initialData[r][c];
           const colDef = template.columns.find(col => col.key === c);
-          if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += (val || 0);
-          if (colDef?.isDefect) totalDefect += (val || 0);
+          if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += (Number(val) || 0);
+          if (colDef?.isDefect) totalDefect += (Number(val) || 0);
         });
       });
       onChange(initialData, totalQty, totalDefect);
@@ -197,8 +332,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
       Object.keys(newData[r]).forEach(c => {
         const val = newData[r][c];
         const colDef = template.columns.find(col => col.key === c);
-        if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += val;
-        if (colDef?.isDefect) totalDefect += val;
+        if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += (Number(val) || 0);
+        if (colDef?.isDefect) totalDefect += (Number(val) || 0);
       });
     });
 
@@ -397,126 +532,6 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
             {isSubmitting ? '저장 중...' : <><Save size={18} /> 수정 완료</>}
           </button>
         </div>
-      </div>
-    </div>
-  );
-};
-
-const LoginScreen = ({ onLogin }) => {
-  const ADMIN_PASSWORD = '1234abc'; 
-
-  const [role, setRole] = useState('worker');
-  const [name, setName] = useState('');
-  const [adminId, setAdminId] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (role === 'worker') {
-      if (name.trim()) {
-        onLogin({ name, role });
-      } else {
-        setError('이름을 입력해주세요.');
-      }
-    } else {
-      if (adminId === 'admin' && password === ADMIN_PASSWORD) {
-        onLogin({ name: '관리자', role });
-      } else {
-        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
-      }
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
-        <div className="flex justify-center mb-6">
-          <div className="bg-blue-700 p-3 rounded-lg">
-            <ClipboardList className="w-10 h-10 text-white" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
-        <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 적고 로그인해주세요</p>
-        
-        <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => { setRole('worker'); setError(''); }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
-              role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'
-            }`}
-          >
-            작업자
-          </button>
-          <button
-            type="button"
-            onClick={() => { setRole('admin'); setError(''); }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
-              role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'
-            }`}
-          >
-            관리자
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {role === 'worker' ? (
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                placeholder="성명 입력"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-          ) : (
-            <>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                  placeholder="admin"
-                  value={adminId}
-                  onChange={(e) => setAdminId(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                  placeholder="****"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {error && (
-            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
-              <AlertCircle size={14} /> {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm
-              ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}
-            `}
-          >
-            로그인
-          </button>
-        </form>
       </div>
     </div>
   );
