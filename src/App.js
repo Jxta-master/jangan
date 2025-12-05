@@ -22,7 +22,6 @@ const firebaseConfig = {
   appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
   measurementId: "G-8XRXFQ7HV4"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -96,9 +95,12 @@ const FORM_TEMPLATES = {
       { key: 'lot', label: 'Lot No', type: 'text' }
     ],
     rows: (model) => {
-      if (['J100', 'J120', 'O100'].includes(model)) return ['J100 RR', 'J120', 'O100', '기타'];
-      if (model === 'J120') return ['J120 A소재', 'D소재'];
+      // 요청하신 차종별 구분 항목 적용
+      if (model === 'J100') return ['J100 A소재', 'J100 C소재', 'J100 D소재'];
+      if (model === 'J120') return ['J120 A소재', 'J120 D소재'];
       if (model === 'O100') return ['O100 A소재', 'O100 B1소재', 'O100 D소재'];
+      
+      // 그 외 일반 차종 (DN8, GN7 등)
       return ['FRT A', 'FRT B', 'RR A', 'RR B', 'RR C', 'RR D'];
     }
   },
@@ -153,127 +155,6 @@ const getFormType = (process) => {
 
 // --- Components ---
 
-const LoginScreen = ({ onLogin }) => {
-  // [관리자 비밀번호 설정] 여기서 비밀번호를 변경하세요.
-  const ADMIN_PASSWORD = '1234abc'; 
-
-  const [role, setRole] = useState('worker');
-  const [name, setName] = useState('');
-  const [adminId, setAdminId] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (role === 'worker') {
-      if (name.trim()) {
-        onLogin({ name, role });
-      } else {
-        setError('이름을 입력해주세요.');
-      }
-    } else {
-      if (adminId === 'admin' && password === ADMIN_PASSWORD) {
-        onLogin({ name: '관리자', role });
-      } else {
-        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
-      }
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
-        <div className="flex justify-center mb-6">
-          <div className="bg-blue-700 p-3 rounded-lg">
-            <ClipboardList className="w-10 h-10 text-white" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
-        <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 적고 로그인버튼을 눌러주세요</p>
-        
-        <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => { setRole('worker'); setError(''); }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
-              role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'
-            }`}
-          >
-            작업자
-          </button>
-          <button
-            type="button"
-            onClick={() => { setRole('admin'); setError(''); }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
-              role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'
-            }`}
-          >
-            관리자
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {role === 'worker' ? (
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                placeholder="성명 입력"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-          ) : (
-            <>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                  placeholder="admin"
-                  value={adminId}
-                  onChange={(e) => setAdminId(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                  placeholder="****"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {error && (
-            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
-              <AlertCircle size={14} /> {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm
-              ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}
-            `}
-          >
-            로그인
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const formType = getFormType(processType);
   const template = FORM_TEMPLATES[formType];
@@ -283,7 +164,6 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(initialData);
-      // 초기 데이터 로드시 합계 계산하여 상위로 전달
       let totalQty = 0;
       let totalDefect = 0;
       Object.keys(initialData).forEach(r => {
@@ -300,7 +180,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
       onChange({}, 0, 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicle, processType]); // initialData는 의존성에서 제외하여 무한루프 방지 (초기 1회만 적용)
+  }, [vehicle, processType]);
 
   const handleCellChange = (rowLabel, colKey, value, isDefect, colType) => {
     const newData = { ...formData };
@@ -428,7 +308,6 @@ const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
   );
 };
 
-// --- Edit Modal Component ---
 const EditLogModal = ({ log, onClose, onUpdate }) => {
   const [notes, setNotes] = useState(log.notes || '');
   const [formDetails, setFormDetails] = useState(log.details || {});
@@ -518,6 +397,126 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
             {isSubmitting ? '저장 중...' : <><Save size={18} /> 수정 완료</>}
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const LoginScreen = ({ onLogin }) => {
+  const ADMIN_PASSWORD = '1234abc'; 
+
+  const [role, setRole] = useState('worker');
+  const [name, setName] = useState('');
+  const [adminId, setAdminId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (role === 'worker') {
+      if (name.trim()) {
+        onLogin({ name, role });
+      } else {
+        setError('이름을 입력해주세요.');
+      }
+    } else {
+      if (adminId === 'admin' && password === ADMIN_PASSWORD) {
+        onLogin({ name: '관리자', role });
+      } else {
+        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
+        <div className="flex justify-center mb-6">
+          <div className="bg-blue-700 p-3 rounded-lg">
+            <ClipboardList className="w-10 h-10 text-white" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
+        <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 적고 로그인해주세요</p>
+        
+        <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
+          <button
+            type="button"
+            onClick={() => { setRole('worker'); setError(''); }}
+            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
+              role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            작업자
+          </button>
+          <button
+            type="button"
+            onClick={() => { setRole('admin'); setError(''); }}
+            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
+              role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            관리자
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {role === 'worker' ? (
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="성명 입력"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="admin"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="****"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm
+              ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}
+            `}
+          >
+            로그인
+          </button>
+        </form>
       </div>
     </div>
   );
