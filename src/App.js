@@ -80,9 +80,9 @@ const PROCESS_STANDARDS = {
       "/images/DN8_RR_HU.jpeg",
     ],
     '검사': [
-      "/images/DN8_G_P.jpeg",
-      "/images/DN8_G_R.jpeg",
-      "/images/DN8_O.jpeg",
+      "/images/DN8_G_P.jpg",
+      "/images/DN8_G_R.jpg",
+      "/images/DN8_O.jpg",
     ]
   },
   'GN7': {
@@ -99,22 +99,22 @@ const PROCESS_STANDARDS = {
     ],
     '프레스': ["/images/J100_P.jpg"],
     '후가공': ["/images/J100_HU.jpg"],
-    '검사': ["/images/DN8_O.jpeg"], 
+    '검사': ["/images/DN8_O.jpg"], 
   },
   'J120': {
     '소재준비': ["/images/J120_SO.jpg"],
     '프레스': ["/images/J120_P.jpg"],
     '후가공': ["/images/J120_HU.jpg"],
-    '검사': ["/images/DN8_O.jpeg"],
+    '검사': ["/images/DN8_O.jpg"],
   },
   'O100': {
     '소재준비': [
-      "/images/O100_SO.jpeg",
-      "/images/O100_SO_B1.jpeg"
+      "/images/O100_SO.jpg",
+      "/images/O100_SO_B1.jpg"
     ],
-    '프레스': ["/images/O100_P.jpeg"],
-    '후가공': ["/images/O100_HU.jpeg"],
-    '검사': ["/images/O100_T.jpeg"],
+    '프레스': ["/images/O100_P.jpg"],
+    '후가공': ["/images/O100_HU.jpg"],
+    '검사': ["/images/O100_T.jpg"],
   }
 };
 
