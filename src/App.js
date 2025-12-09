@@ -58,7 +58,7 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- [수정] 작업 표준서 데이터 (요청하신 내용 적용) ---
+// --- 작업 표준서 데이터 ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -68,7 +68,7 @@ const PROCESS_STANDARDS = {
       "/images/DN8_RR_SO_R.jpeg",
       "/images/DN8_RR_SO_S.jpeg",
       "/images/DN8_RR_SO_C.jpeg",
-      "/images/DN8_RR_SO_D.jpeg", // 오타 수정 (imgaes -> images)
+      "/images/DN8_RR_SO_D.jpeg",
     ],
     '프레스': [
       "/images/DN8_FRT_P.jpeg",
@@ -308,6 +308,8 @@ const StandardModal = ({ vehicle, process, onClose }) => {
 };
 
 const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
+  if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-gray-400 text-sm">데이터 없음</div>;
+
   const maxVal = Math.max(...data.map(d => d.value), 1);
   return (
     <div className="flex items-end h-32 gap-2 mt-4">
@@ -373,60 +375,114 @@ const DashboardStats = ({ logs }) => {
   );
 };
 
+// [수정] 프레스 요약 테이블 (부위별 상세 집계 추가)
 const PressSummaryTable = ({ logs }) => {
-  // 프레스 데이터만 필터링 후 차종별 집계
   const summaryData = useMemo(() => {
     const summary = {};
     
-    // 초기화
     VEHICLE_MODELS.forEach(model => {
-      summary[model] = { production: 0, defect: 0 };
+      summary[model] = {
+        'FRT LH': { prod: 0, def: 0 },
+        'FRT RH': { prod: 0, def: 0 },
+        'RR LH': { prod: 0, def: 0 },
+        'RR RH': { prod: 0, def: 0 }
+      };
     });
 
     logs.forEach(log => {
-      if (log.processType === '프레스') {
-        if (!summary[log.vehicleModel]) summary[log.vehicleModel] = { production: 0, defect: 0 };
-        summary[log.vehicleModel].production += (log.productionQty || 0);
-        summary[log.vehicleModel].defect += (log.defectQty || 0);
+      if (log.processType === '프레스' && log.details) {
+        const model = log.vehicleModel;
+        if (!summary[model]) return; // 정의되지 않은 차종 스킵
+
+        Object.entries(log.details).forEach(([part, data]) => {
+          // data.qty, data.defect_qty
+          if (summary[model][part]) {
+            summary[model][part].prod += (Number(data.qty) || 0);
+            summary[model][part].def += (Number(data.defect_qty) || 0);
+          }
+        });
       }
     });
 
     return summary;
   }, [logs]);
 
+  // 전체 합계 계산
+  const grandTotal = useMemo(() => {
+    let totalProd = 0;
+    let totalDef = 0;
+    Object.values(summaryData).forEach(parts => {
+      Object.values(parts).forEach(val => {
+        totalProd += val.prod;
+        totalDef += val.def;
+      });
+    });
+    return { totalProd, totalDef };
+  }, [summaryData]);
+
+  const hasData = (parts) => Object.values(parts).some(v => v.prod > 0 || v.def > 0);
+
   return (
     <div className="mt-4 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden animate-fade-in mb-6">
       <div className="bg-gray-800 text-white px-4 py-3 font-bold flex items-center justify-between">
-        <span>프레스 생산현황 요약 (차종별)</span>
+        <span>프레스 생산현황 상세 요약 (차종/부위별)</span>
       </div>
-      <table className="w-full text-sm text-left">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b">
-          <tr>
-            <th className="px-6 py-3 border-r">차종</th>
-            <th className="px-6 py-3 border-r text-right">총 생산수량</th>
-            <th className="px-6 py-3 text-right text-red-600">총 불량수량</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(summaryData).map(([model, data]) => (
-            (data.production > 0 || data.defect > 0) && (
-              <tr key={model} className="border-b hover:bg-gray-50">
-                <td className="px-6 py-3 font-bold border-r">{model}</td>
-                <td className="px-6 py-3 text-right border-r font-medium">{data.production.toLocaleString()}</td>
-                <td className="px-6 py-3 text-right font-bold text-red-600">{data.defect.toLocaleString()}</td>
-              </tr>
-            )
-          ))}
-          {Object.values(summaryData).every(d => d.production === 0 && d.defect === 0) && (
-            <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
-          )}
-           <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
-              <td className="px-6 py-3 border-r text-center">합 계</td>
-              <td className="px-6 py-3 text-right border-r">{Object.values(summaryData).reduce((a,b)=>a+b.production,0).toLocaleString()}</td>
-              <td className="px-6 py-3 text-right text-red-600">{Object.values(summaryData).reduce((a,b)=>a+b.defect,0).toLocaleString()}</td>
-           </tr>
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b">
+            <tr>
+              <th className="px-4 py-3 border-r bg-gray-200">차종</th>
+              <th className="px-4 py-3 border-r">부위</th>
+              <th className="px-4 py-3 border-r text-right">생산수량</th>
+              <th className="px-4 py-3 text-right text-red-600">불량수량</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(summaryData).map(([model, parts]) => {
+              if (!hasData(parts)) return null;
+              
+              return (
+                <React.Fragment key={model}>
+                  {Object.entries(parts).map(([part, vals], idx) => (
+                    <tr key={model + part} className="border-b hover:bg-gray-50">
+                      {idx === 0 && (
+                        <td className="px-4 py-3 font-bold border-r bg-gray-50 align-middle" rowSpan={4}>
+                          {model}
+                        </td>
+                      )}
+                      <td className="px-4 py-2 border-r text-gray-600">{part}</td>
+                      <td className="px-4 py-2 text-right border-r font-medium">{vals.prod.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-bold text-red-600">{vals.def.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {/* 차종별 소계 */}
+                  <tr className="bg-blue-50 border-b font-semibold">
+                    <td colSpan="2" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
+                    <td className="px-4 py-2 text-right border-r text-blue-800">
+                      {Object.values(parts).reduce((a, b) => a + b.prod, 0).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right text-red-600">
+                      {Object.values(parts).reduce((a, b) => a + b.def, 0).toLocaleString()}
+                    </td>
+                  </tr>
+                </React.Fragment>
+              );
+            })}
+            
+            {/* 데이터 없을 때 */}
+            {Object.values(summaryData).every(parts => !hasData(parts)) && (
+              <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
+            )}
+
+            {/* 총계 */}
+            <tr className="bg-slate-800 text-white font-bold border-t-2 border-black">
+              <td colSpan="2" className="px-4 py-3 text-center border-r border-slate-600">총 합계</td>
+              <td className="px-4 py-3 text-right border-r border-slate-600">{grandTotal.totalProd.toLocaleString()}</td>
+              <td className="px-4 py-3 text-right">{grandTotal.totalDef.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
@@ -1211,19 +1267,46 @@ const AdminDashboard = ({ db, appId }) => {
     const summary = {};
     // Initialize
     VEHICLE_MODELS.forEach(model => {
-      summary[model] = { production: 0, defect: 0 };
+      summary[model] = {
+        'FRT LH': { prod: 0, def: 0 },
+        'FRT RH': { prod: 0, def: 0 },
+        'RR LH': { prod: 0, def: 0 },
+        'RR RH': { prod: 0, def: 0 }
+      };
     });
 
     logs.forEach(log => {
-      if (log.processType === '프레스') {
-        if (!summary[log.vehicleModel]) summary[log.vehicleModel] = { production: 0, defect: 0 };
-        summary[log.vehicleModel].production += (log.productionQty || 0);
-        summary[log.vehicleModel].defect += (log.defectQty || 0);
+      if (log.processType === '프레스' && log.details) {
+        const model = log.vehicleModel;
+        if (!summary[model]) return; // 정의되지 않은 차종 스킵
+
+        Object.entries(log.details).forEach(([part, data]) => {
+          // data.qty, data.defect_qty
+          if (summary[model][part]) {
+            summary[model][part].prod += (Number(data.qty) || 0);
+            summary[model][part].def += (Number(data.defect_qty) || 0);
+          }
+        });
       }
     });
 
     return summary;
   }, [logs]);
+
+  // 전체 합계 계산
+  const grandTotal = useMemo(() => {
+    let totalProd = 0;
+    let totalDef = 0;
+    Object.values(pressSummary).forEach(parts => {
+      Object.values(parts).forEach(val => {
+        totalProd += val.prod;
+        totalDef += val.def;
+      });
+    });
+    return { totalProd, totalDef };
+  }, [pressSummary]);
+
+  const hasData = (parts) => Object.values(parts).some(v => v.prod > 0 || v.def > 0);
 
 
   const handleDelete = async (id) => {
@@ -1426,29 +1509,55 @@ const AdminDashboard = ({ db, appId }) => {
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b">
               <tr>
-                <th className="px-6 py-3 border-r">차종</th>
-                <th className="px-6 py-3 border-r text-right">총 생산수량</th>
-                <th className="px-6 py-3 text-right text-red-600">총 불량수량</th>
+                <th className="px-4 py-3 border-r bg-gray-200">차종</th>
+                <th className="px-4 py-3 border-r">부위</th>
+                <th className="px-4 py-3 border-r text-right">생산수량</th>
+                <th className="px-4 py-3 text-right text-red-600">불량수량</th>
               </tr>
             </thead>
             <tbody>
-              {Object.entries(pressSummary).map(([model, data]) => (
-                (data.production > 0 || data.defect > 0) && (
-                  <tr key={model} className="border-b hover:bg-gray-50">
-                    <td className="px-6 py-3 font-bold border-r">{model}</td>
-                    <td className="px-6 py-3 text-right border-r font-medium">{data.production.toLocaleString()}</td>
-                    <td className="px-6 py-3 text-right font-bold text-red-600">{data.defect.toLocaleString()}</td>
-                  </tr>
-                )
-              ))}
-              {Object.values(pressSummary).every(d => d.production === 0 && d.defect === 0) && (
-                <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
+              {Object.entries(pressSummary).map(([model, parts]) => {
+                if (!hasData(parts)) return null;
+                
+                return (
+                  <React.Fragment key={model}>
+                    {Object.entries(parts).map(([part, vals], idx) => (
+                      <tr key={model + part} className="border-b hover:bg-gray-50">
+                        {idx === 0 && (
+                          <td className="px-4 py-3 font-bold border-r bg-gray-50 align-middle" rowSpan={4}>
+                            {model}
+                          </td>
+                        )}
+                        <td className="px-4 py-2 border-r text-gray-600">{part}</td>
+                        <td className="px-4 py-2 text-right border-r font-medium">{vals.prod.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right font-bold text-red-600">{vals.def.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {/* 차종별 소계 */}
+                    <tr className="bg-blue-50 border-b font-semibold">
+                      <td colSpan="2" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
+                      <td className="px-4 py-2 text-right border-r text-blue-800">
+                        {Object.values(parts).reduce((a, b) => a + b.prod, 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right text-red-600">
+                        {Object.values(parts).reduce((a, b) => a + b.def, 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
+              
+              {/* 데이터 없을 때 */}
+              {Object.values(pressSummary).every(parts => !hasData(parts)) && (
+                <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
               )}
-               <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                  <td className="px-6 py-3 border-r text-center">합 계</td>
-                  <td className="px-6 py-3 text-right border-r">{Object.values(pressSummary).reduce((a,b)=>a+b.production,0).toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right text-red-600">{Object.values(pressSummary).reduce((a,b)=>a+b.defect,0).toLocaleString()}</td>
-               </tr>
+
+              {/* 총계 */}
+              <tr className="bg-slate-800 text-white font-bold border-t-2 border-black">
+                <td colSpan="2" className="px-4 py-3 text-center border-r border-slate-600">총 합계</td>
+                <td className="px-4 py-3 text-right border-r border-slate-600">{grandTotal.totalProd.toLocaleString()}</td>
+                <td className="px-4 py-3 text-right">{grandTotal.totalDef.toLocaleString()}</td>
+              </tr>
             </tbody>
           </table>
         </div>
