@@ -58,8 +58,7 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- [수정] 차종별/공정별 작업표준서 이미지 설정 ---
-// 구글 드라이브 링크를 이미지 태그용(export=view)으로 변환하여 적용했습니다.
+// --- 작업 표준서 데이터 ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -90,7 +89,7 @@ const PROCESS_STANDARDS = {
     '소재준비': ["https://drive.google.com/uc?export=view&id=1RnIVv4JtntNY78uWGEu24_2Ea-P77wzU"],
     '프레스': ["https://drive.google.com/uc?export=view&id=1tTlzvgbV1PzG7MdL-wTN-8zQrAuyhYS9"],
     '후가공': ["https://drive.google.com/uc?export=view&id=15HCYEnb2xeQtioTkesC9ZSrK0NnkYlN3"],
-    '검사': [], // GN7 검사 이미지가 제공되지 않아 빈 배열로 둠
+    '검사': [], 
   },
   'J100': {
     '소재준비': [
@@ -300,7 +299,10 @@ const StandardModal = ({ vehicle, process, onClose }) => {
   );
 };
 
+// [수정됨] 차트 컴포넌트 (데이터 기반 동적 생성)
 const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
+  if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-gray-400 text-sm">데이터 없음</div>;
+
   const maxVal = Math.max(...data.map(d => d.value), 1);
   return (
     <div className="flex items-end h-32 gap-2 mt-4">
@@ -321,41 +323,48 @@ const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
 };
 
 const DashboardStats = ({ logs }) => {
-  const totalQty = logs.reduce((sum, log) => sum + (log.productionQty || 0), 0);
-  const totalDefect = logs.reduce((sum, log) => sum + (log.defectQty || 0), 0);
-  const defectRate = totalQty > 0 ? ((totalDefect / (totalQty + totalDefect)) * 100).toFixed(1) : 0;
-  
-  const vehicleStats = logs.reduce((acc, log) => {
-    acc[log.vehicleModel] = (acc[log.vehicleModel] || 0) + log.productionQty;
-    return acc;
-  }, {});
-  
-  const chartData = Object.entries(vehicleStats).map(([k, v]) => ({ label: k, value: v }));
+  // 1. 프레스 생산량 (부위별)
+  const pressProductionData = useMemo(() => {
+    const counts = { 'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0 };
+    logs.filter(l => l.processType === '프레스').forEach(log => {
+      if (log.details) {
+        Object.keys(counts).forEach(key => {
+          if (log.details[key]) counts[key] += (Number(log.details[key].qty) || 0);
+        });
+      }
+    });
+    return Object.entries(counts).map(([k, v]) => ({ label: k, value: v }));
+  }, [logs]);
+
+  // 2. 검사 불량수량 (부위별)
+  const inspectionDefectData = useMemo(() => {
+    const counts = { 'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0 };
+    logs.filter(l => l.processType === '검사').forEach(log => {
+      if (log.details) {
+        Object.keys(counts).forEach(key => {
+          if (log.details[key]) counts[key] += (Number(log.details[key].defect_total) || 0);
+        });
+      }
+    });
+    return Object.entries(counts).map(([k, v]) => ({ label: k, value: v }));
+  }, [logs]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
         <div className="flex justify-between items-center mb-2">
-          <h3 className="text-slate-500 font-bold text-sm">금일 총 생산량</h3>
+          <h3 className="text-slate-500 font-bold text-sm">프레스 생산량 (부위별)</h3>
           <div className="p-2 bg-blue-50 rounded-full text-blue-600"><Factory size={20} /></div>
         </div>
-        <div className="text-3xl font-extrabold text-slate-800">{totalQty.toLocaleString()} <span className="text-sm font-normal text-slate-400">EA</span></div>
+        <SimpleBarChart data={pressProductionData} color="bg-blue-500" />
       </div>
 
       <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
         <div className="flex justify-between items-center mb-2">
-          <h3 className="text-slate-500 font-bold text-sm">종합 불량률</h3>
+          <h3 className="text-slate-500 font-bold text-sm">검사 불량수량 (부위별)</h3>
           <div className="p-2 bg-red-50 rounded-full text-red-600"><AlertCircle size={20} /></div>
         </div>
-        <div className="text-3xl font-extrabold text-slate-800">{defectRate}% <span className="text-sm font-normal text-slate-400">({totalDefect} EA)</span></div>
-      </div>
-
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-slate-500 font-bold text-sm">차종별 생산비중</h3>
-          <div className="p-2 bg-purple-50 rounded-full text-purple-600"><BarChart3 size={20} /></div>
-        </div>
-        <SimpleBarChart data={chartData} color="bg-indigo-500" />
+        <SimpleBarChart data={inspectionDefectData} color="bg-red-500" />
       </div>
     </div>
   );
