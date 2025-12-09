@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, updateDoc 
@@ -8,18 +8,18 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Menu
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Scan
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
 const firebaseConfig = {
-  apiKey: "API_KEY_를_입력하세요",
-  authDomain: "PROJECT_ID.firebaseapp.com",
-  projectId: "PROJECT_ID",
-  storageBucket: "PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID"
+  apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
+  authDomain: "mes-worklog-system.firebaseapp.com",
+  projectId: "mes-worklog-system",
+  storageBucket: "mes-worklog-system.firebasestorage.app",
+  messagingSenderId: "662704876600",
+  appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
+  measurementId: "G-8XRXFQ7HV4"
 };
 
 // Initialize Firebase
@@ -34,6 +34,7 @@ const appId = 'mes-production-v1';
 const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
 const PROCESS_TYPES = ['소재준비', '프레스', '후가공', '검사'];
 
+// 시간/분 리스트 생성
 const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
@@ -97,7 +98,8 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text' },
+      // [수정] FMB LOT만 바코드 스캔 가능 (isBarcode: true)
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isBarcode: true },
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
@@ -148,6 +150,71 @@ const getFormType = (process) => {
 
 // --- Components ---
 
+// Barcode Scanner Modal (CDN Load)
+const BarcodeScannerModal = ({ onClose, onScan }) => {
+  const [libLoaded, setLibLoaded] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const scannerRef = useRef(null);
+
+  useEffect(() => {
+    if (window.Html5QrcodeScanner) {
+      setLibLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = "https://unpkg.com/html5-qrcode";
+    script.async = true;
+    script.onload = () => setLibLoaded(true);
+    script.onerror = () => setErrorMsg('스캐너 라이브러리를 로드하지 못했습니다.');
+    document.body.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (libLoaded && !scannerRef.current) {
+      try {
+        const scanner = new window.Html5QrcodeScanner(
+          "reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+        scannerRef.current = scanner;
+
+        scanner.render((decodedText) => {
+          onScan(decodedText);
+          scanner.clear().catch(console.error);
+          onClose();
+        }, (error) => {
+          // ignore
+        });
+      } catch (err) {
+        console.error("Scanner init error:", err);
+        setErrorMsg("카메라 초기화 실패");
+      }
+    }
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(console.error);
+        scannerRef.current = null;
+      }
+    };
+  }, [libLoaded, onScan, onClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+      <div className="bg-white rounded-lg p-4 w-full max-w-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-lg">바코드 스캔</h3>
+          <button onClick={onClose}><X size={24} /></button>
+        </div>
+        {!libLoaded && !errorMsg && <p className="text-center p-4">스캐너 로딩 중...</p>}
+        {errorMsg && <p className="text-center text-red-500 p-4">{errorMsg}</p>}
+        <div id="reader" className="w-full"></div>
+        <p className="text-center text-sm text-gray-500 mt-4">카메라에 바코드를 비춰주세요</p>
+      </div>
+    </div>
+  );
+};
+
 const LoginScreen = ({ onLogin }) => {
   const ADMIN_PASSWORD = '1234abc'; 
   const [role, setRole] = useState('worker');
@@ -170,7 +237,7 @@ const LoginScreen = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full border border-slate-300">
+      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
         <div className="flex justify-center mb-6">
           <div className="bg-blue-700 p-4 rounded-2xl shadow-lg">
             <ClipboardList className="w-10 h-10 text-white" />
@@ -213,6 +280,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const template = FORM_TEMPLATES[formType];
   const rowLabels = template.rows(vehicle);
   const [formData, setFormData] = useState({});
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanTarget, setScanTarget] = useState({ row: null, col: null });
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
@@ -260,45 +329,75 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     onChange(newData, totalQty, totalDefect);
   };
 
+  const openScanner = (rowLabel, colKey) => {
+    setScanTarget({ row: rowLabel, col: colKey });
+    setShowScanner(true);
+  };
+
+  const handleScanSuccess = (decodedText) => {
+    if (scanTarget.row && scanTarget.col) {
+      handleCellChange(scanTarget.row, scanTarget.col, decodedText);
+    }
+    setShowScanner(false);
+  };
+
   return (
-    <div className="overflow-x-auto border border-black bg-white shadow-sm">
-      <table className="w-full text-sm border-collapse min-w-[800px]">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-black px-2 py-3 text-center w-24 font-bold text-gray-800">구분</th>
-            {template.columns.map(col => (
-              <th key={col.key} className={`border border-black px-1 py-3 text-center font-bold text-xs whitespace-nowrap
-                ${col.isDefect ? 'text-red-700' : 'text-gray-800'}
-              `}>
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rowLabels.map((rowLabel) => (
-            <tr key={rowLabel}>
-              <td className="border border-black px-2 py-3 font-bold text-center bg-gray-50 text-xs">
-                {rowLabel}
-              </td>
+    <>
+      <div className="overflow-x-auto border border-black bg-white shadow-sm">
+        <table className="w-full text-sm border-collapse min-w-[800px]">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-black px-2 py-3 text-center w-24 font-bold text-gray-800">구분</th>
               {template.columns.map(col => (
-                <td key={col.key} className="border border-black p-0 h-12 relative group">
-                  <input
-                    type={col.type === 'number' ? 'number' : 'text'}
-                    min={col.type === 'number' ? "0" : undefined}
-                    value={formData[rowLabel]?.[col.key] || ''}
-                    className={`w-full h-full text-center outline-none bg-transparent text-base
-                      ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
-                    `}
-                    onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
-                  />
-                </td>
+                <th key={col.key} className={`border border-black px-1 py-3 text-center font-bold text-xs whitespace-nowrap
+                  ${col.isDefect ? 'text-red-700' : 'text-gray-800'}
+                `}>
+                  {col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rowLabels.map((rowLabel) => (
+              <tr key={rowLabel}>
+                <td className="border border-black px-2 py-3 font-bold text-center bg-gray-50 text-xs">
+                  {rowLabel}
+                </td>
+                {template.columns.map(col => (
+                  <td key={col.key} className="border border-black p-0 h-12 relative group">
+                    <input
+                      type={col.type === 'number' ? 'number' : 'text'}
+                      min={col.type === 'number' ? "0" : undefined}
+                      value={formData[rowLabel]?.[col.key] || ''}
+                      className={`w-full h-full text-center outline-none bg-transparent text-base
+                        ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
+                      `}
+                      onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
+                    />
+                    {/* isBarcode가 true인 컬럼(FMB LOT)에만 스캔 아이콘 표시 */}
+                    {col.isBarcode && (
+                      <button 
+                        onClick={() => openScanner(rowLabel, col.key)}
+                        className="absolute right-0 top-0 h-full px-1 text-gray-400 hover:text-blue-600 opacity-50 hover:opacity-100 transition-opacity"
+                        title="카메라 스캔"
+                      >
+                        <Scan size={14} />
+                      </button>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {showScanner && (
+        <BarcodeScannerModal 
+          onClose={() => setShowScanner(false)} 
+          onScan={handleScanSuccess} 
+        />
+      )}
+    </>
   );
 };
 
