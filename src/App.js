@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
-  getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, updateDoc 
+  getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, updateDoc, where 
 } from 'firebase/firestore';
 import { 
   getAuth, signInAnonymously 
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
+// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
 const firebaseConfig = {
-  apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
-  authDomain: "mes-worklog-system.firebaseapp.com",
-  projectId: "mes-worklog-system",
-  storageBucket: "mes-worklog-system.firebasestorage.app",
-  messagingSenderId: "662704876600",
-  appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
-  measurementId: "G-8XRXFQ7HV4"
+  apiKey: "API_KEY_를_입력하세요",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  projectId: "PROJECT_ID",
+  storageBucket: "PROJECT_ID.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
 };
 
 // Initialize Firebase
@@ -97,8 +97,7 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      // FMB LOT: isPhoto: true 설정 (카메라 입력 또는 수기 입력)
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isBarcode: true },
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
@@ -159,7 +158,6 @@ const compressImage = (file) => {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        // 최대 너비 600px로 제한하여 용량 대폭 축소
         const MAX_WIDTH = 600; 
         let width = img.width;
         let height = img.height;
@@ -175,7 +173,6 @@ const compressImage = (file) => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        // JPEG 포맷, 품질 0.5 (50%)로 압축
         const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
         resolve(dataUrl);
       };
@@ -183,7 +180,6 @@ const compressImage = (file) => {
   });
 };
 
-// Image Viewer Modal (관리자용)
 const ImageViewerModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
   return (
@@ -192,6 +188,67 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
       <button onClick={onClose} className="absolute top-4 right-4 text-white bg-gray-800 p-2 rounded-full">
         <X size={24} />
       </button>
+    </div>
+  );
+};
+
+// Barcode Scanner Modal (CDN Load)
+const BarcodeScannerModal = ({ onClose, onScan }) => {
+  const [libLoaded, setLibLoaded] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const scannerRef = useRef(null);
+
+  useEffect(() => {
+    if (window.Html5QrcodeScanner) {
+      setLibLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = "https://unpkg.com/html5-qrcode";
+    script.async = true;
+    script.onload = () => setLibLoaded(true);
+    script.onerror = () => setErrorMsg('바코드 라이브러리 로드 실패. 인터넷 연결을 확인하세요.');
+    document.body.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (libLoaded && !scannerRef.current) {
+      try {
+        const scanner = new window.Html5QrcodeScanner(
+          "reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+        scannerRef.current = scanner;
+        scanner.render((decodedText) => {
+          onScan(decodedText);
+          scanner.clear().catch(console.error);
+          onClose();
+        }, (error) => {});
+      } catch (err) {
+        console.error(err);
+        setErrorMsg("카메라 초기화 실패. 권한을 허용해주세요.");
+      }
+    }
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(console.error);
+        scannerRef.current = null;
+      }
+    };
+  }, [libLoaded, onScan, onClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+      <div className="bg-white rounded-lg p-4 w-full max-w-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-lg">바코드 스캔</h3>
+          <button onClick={onClose}><X size={24} /></button>
+        </div>
+        {!libLoaded && !errorMsg && <p className="text-center p-4">스캐너 로딩 중...</p>}
+        {errorMsg && <p className="text-center text-red-500 p-4">{errorMsg}</p>}
+        <div id="reader" className="w-full"></div>
+      </div>
     </div>
   );
 };
@@ -263,6 +320,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const [formData, setFormData] = useState({});
   const fileInputRef = useRef(null);
   const [activeCell, setActiveCell] = useState({ row: null, col: null });
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanTarget, setScanTarget] = useState({ row: null, col: null });
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
@@ -310,28 +369,17 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     onChange(newData, totalQty, totalDefect);
   };
 
-  const handleCameraClick = (rowLabel, colKey) => {
-    setActiveCell({ row: rowLabel, col: colKey });
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+  const openScanner = (rowLabel, colKey) => {
+    setScanTarget({ row: rowLabel, col: colKey });
+    setShowScanner(true);
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (file && activeCell.row) {
-      try {
-        const compressedDataUrl = await compressImage(file);
-        handleCellChange(activeCell.row, activeCell.col, compressedDataUrl);
-      } catch (err) {
-        console.error("Compression failed", err);
-        alert("이미지 처리 중 오류가 발생했습니다.");
-      }
+  const handleScanSuccess = (decodedText) => {
+    if (scanTarget.row && scanTarget.col) {
+      handleCellChange(scanTarget.row, scanTarget.col, decodedText);
     }
-    e.target.value = ''; // Reset input
+    setShowScanner(false);
   };
-
-  const isImage = (value) => typeof value === 'string' && value.startsWith('data:image');
 
   return (
     <>
@@ -357,41 +405,27 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
                 </td>
                 {template.columns.map(col => {
                   const cellValue = formData[rowLabel]?.[col.key] || '';
-                  const hasImage = isImage(cellValue);
                   
                   return (
                     <td key={col.key} className="border border-black p-0 h-12 relative group bg-white">
-                      {hasImage ? (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <button 
-                            onClick={() => handleCellChange(rowLabel, col.key, '')} // Clear image
-                            className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1 hover:bg-red-100 hover:text-red-600"
-                            title="클릭하여 삭제"
-                          >
-                            <Camera size={14} /> 
-                            <span>사진등록됨</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <input
-                          type={col.type === 'number' ? 'number' : 'text'}
-                          min={col.type === 'number' ? "0" : undefined}
-                          value={cellValue}
-                          className={`w-full h-full text-center outline-none bg-transparent text-base
-                            ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
-                          `}
-                          onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
-                        />
-                      )}
+                      <input
+                        type={col.type === 'number' ? 'number' : 'text'}
+                        min={col.type === 'number' ? "0" : undefined}
+                        value={cellValue}
+                        className={`w-full h-full text-center outline-none bg-transparent text-base
+                          ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
+                        `}
+                        onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
+                      />
                       
-                      {/* FMB LOT 컬럼(isPhoto: true)에만 카메라 아이콘 표시 */}
-                      {col.isPhoto && !hasImage && (
+                      {/* isBarcode가 true인 컬럼(FMB LOT)에만 스캔 아이콘 표시 */}
+                      {col.isBarcode && (
                         <button 
-                          onClick={() => handleCameraClick(rowLabel, col.key)}
+                          onClick={() => openScanner(rowLabel, col.key)}
                           className="absolute right-0 top-0 h-full px-2 text-gray-400 hover:text-blue-600 opacity-50 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm"
-                          title="사진 촬영"
+                          title="바코드 스캔"
                         >
-                          <Camera size={18} />
+                          <Scan size={18} />
                         </button>
                       )}
                     </td>
@@ -402,15 +436,12 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
           </tbody>
         </table>
       </div>
-      {/* Hidden File Input for Camera */}
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
-        className="hidden" 
-      />
+      {showScanner && (
+        <BarcodeScannerModal 
+          onClose={() => setShowScanner(false)} 
+          onScan={handleScanSuccess} 
+        />
+      )}
     </>
   );
 };
@@ -806,19 +837,39 @@ const WorkerDashboard = ({ user, db, appId }) => {
 
 const AdminDashboard = ({ db, appId }) => {
   const [logs, setLogs] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(20);
   const [loading, setLoading] = useState(true);
   const [editingLog, setEditingLog] = useState(null);
   const [viewImage, setViewImage] = useState(null);
+  // 월별 필터 상태 (기본값: 현재 년-월)
+  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().slice(0, 7));
 
   useEffect(() => {
-    const q = query(collection(db, 'work_logs'), orderBy('timestamp', 'desc'));
+    // 필터 날짜(월)가 변경될 때마다 쿼리 실행
+    const [year, month] = filterDate.split('-');
+    // 해당 월의 1일 0시
+    const startOfMonth = new Date(year, month - 1, 1);
+    // 다음 달의 1일 0시
+    const endOfMonth = new Date(year, month, 1);
+
+    const q = query(
+      collection(db, 'work_logs'),
+      where('timestamp', '>=', startOfMonth),
+      where('timestamp', '<', endOfMonth),
+      orderBy('timestamp', 'desc')
+    );
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setLogs(logsData);
       setLoading(false);
     });
+
+    // 필터 변경 시 더보기 초기화
+    setVisibleCount(20);
+
     return () => unsubscribe();
-  }, [db]);
+  }, [db, filterDate]);
 
   const handleDelete = async (id) => {
     if (window.confirm('정말 이 작업일보를 삭제하시겠습니까?')) {
@@ -835,6 +886,10 @@ const AdminDashboard = ({ db, appId }) => {
   const handleUpdate = async (id, updatedData) => {
     await updateDoc(doc(db, 'work_logs', id), updatedData);
     alert('수정되었습니다.');
+  };
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 20);
   };
 
   const exportToCSV = (data) => {
@@ -907,16 +962,18 @@ const AdminDashboard = ({ db, appId }) => {
         )}
         {/* 이미지 데이터 확인용 */}
         {Object.values(log.details).some(row => Object.values(row).some(v => typeof v === 'string' && v.startsWith('data:image'))) && (
-           <div className="mt-2 pt-2 border-t border-gray-200 text-purple-600 font-bold flex items-center gap-1 cursor-pointer" onClick={() => {
+           <div className="mt-2 pt-2 border-t border-gray-200 text-purple-600 font-bold flex items-center gap-1 cursor-pointer hover:text-purple-800" onClick={() => {
               const firstImg = Object.values(log.details).flatMap(row => Object.values(row)).find(v => typeof v === 'string' && v.startsWith('data:image'));
               if(firstImg) setViewImage(firstImg);
            }}>
-             <ImageIcon size={14} /> FMB LOT 사진 있음
+             <ImageIcon size={14} /> FMB LOT 사진 있음 (클릭)
            </div>
         )}
       </div>
     );
   };
+  
+  const visibleLogs = logs.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
@@ -928,6 +985,18 @@ const AdminDashboard = ({ db, appId }) => {
           </h2>
           <p className="text-gray-500 text-xs mt-1">데이터 조회 및 엑셀 다운로드</p>
         </div>
+        
+        {/* 월 선택 필터 추가 */}
+        <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
+          <Filter size={16} className="text-gray-500" />
+          <input 
+            type="month" 
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer"
+          />
+        </div>
+
         <button onClick={() => exportToCSV(logs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded">
           <FileSpreadsheet size={16} /> Excel 다운로드
         </button>
@@ -951,10 +1020,10 @@ const AdminDashboard = ({ db, appId }) => {
             <tbody>
               {loading ? (
                 <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
-              ) : logs.length === 0 ? (
-                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">데이터가 없습니다.</td></tr>
+              ) : visibleLogs.length === 0 ? (
+                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">해당 월에 등록된 데이터가 없습니다.</td></tr>
               ) : (
-                logs.map((log) => (
+                visibleLogs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-4 py-3 border-r align-top whitespace-nowrap">
                       {log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000).toLocaleDateString() : '-'}
@@ -987,6 +1056,18 @@ const AdminDashboard = ({ db, appId }) => {
             </tbody>
           </table>
         </div>
+        {/* Load More Button */}
+        {logs.length > visibleCount && (
+          <div className="p-4 text-center border-t border-gray-200">
+             <button 
+               onClick={handleLoadMore}
+               className="px-6 py-2 bg-gray-100 text-gray-600 font-bold rounded-full hover:bg-gray-200 transition flex items-center gap-2 mx-auto"
+             >
+               <ChevronDown size={18} />
+               더 보기 ({logs.length - visibleCount}개 남음)
+             </button>
+          </div>
+        )}
       </div>
 
       {editingLog && (
