@@ -63,7 +63,7 @@ const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
       "/images/DN8_A_SO",
-      "https://drive.google.com/uc?export=view&id=1SnwCVW6Ynha5WiYyiXeJ3SuSScmvohTJ",
+      "/images/DN8_FRT_SO_P",
       "https://drive.google.com/uc?export=view&id=148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F",
       "https://drive.google.com/uc?export=view&id=17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a",
       "https://drive.google.com/uc?export=view&id=1cCxUBXpq2eNZK3Th1vgebIuOL2TH2Ns_",
