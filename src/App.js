@@ -943,6 +943,8 @@ const AdminDashboard = ({ db, appId }) => {
       </div>
     );
   };
+  
+  const visibleLogs = logs.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
