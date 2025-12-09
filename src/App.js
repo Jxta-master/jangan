@@ -62,7 +62,7 @@ const getLogTitle = (model, process) => {
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
-      "/images/DN8_A_SO",
+      "/images/DN8_A_SO.jpeg",
       "/images/DN8_FRT_SO_P",
       "https://drive.google.com/uc?export=view&id=148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F",
       "https://drive.google.com/uc?export=view&id=17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a",
@@ -93,9 +93,9 @@ const PROCESS_STANDARDS = {
   },
   'J100': {
     '소재준비': [
-      "https://drive.google.com/uc?export=view&id=1qP8w1ASRcIiOaMyxDvxv_pxjaJWSsSeB",
-      "https://drive.google.com/uc?export=view&id=1zn6nDa-qbRxP0GqW5Rb0PS6pediHeHxE",
-      "https://drive.google.com/uc?export=view&id=1jaOpILpuj1aRwctVfQqJHmOqzuc6_FXz",
+      "/images/J100_SO.jpg",
+      "/images/J100_SO_B.jpg",
+      "/images/J100_SO_C.jpg",
     ],
     '프레스': ["https://drive.google.com/uc?export=view&id=1JvxZetC1mmIsH_0F-WlrvOo0nDGGt64f"],
     '후가공': ["https://drive.google.com/uc?export=view&id=1-iOTY8MzoBvHX7SItNRvBkWUFX252Ihe"],
