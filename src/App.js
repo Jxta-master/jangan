@@ -97,7 +97,7 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      // FMB LOT: 바코드로 변경
+      // [수정] FMB LOT만 바코드 스캔 가능 (isBarcode: true)
       { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isBarcode: true },
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
