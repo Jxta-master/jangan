@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [수정 완료] 사용자분이 제공해주신 실제 Firebase 키값을 적용했습니다.
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -183,7 +182,7 @@ const compressImage = (file) => {
   });
 };
 
-// Image Viewer Modal (관리자용 확대보기)
+// Image Viewer Modal
 const ImageViewerModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
   return (
@@ -902,13 +901,16 @@ const AdminDashboard = ({ db, appId }) => {
       csvRows.push([...vals, ...details].join(','));
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.join('\n');
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("href", url);
     link.setAttribute("download", `작업일보_${new Date().toLocaleDateString()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const renderDetailedQty = (log) => {
