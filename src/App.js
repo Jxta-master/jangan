@@ -8,11 +8,10 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [적용 완료] 요청하신 Firebase 키값으로 설정되었습니다.
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -35,6 +34,10 @@ const appId = 'mes-production-v1';
 const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
 const PROCESS_TYPES = ['소재준비', '프레스', '후가공', '검사'];
 
+// 시간/분 리스트 생성
+const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+
 const isKGM = (model) => ['J100', 'O100', 'J120'].includes(model);
 
 const getLogTitle = (model, process) => {
@@ -56,47 +59,26 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- Inspection Specs by Vehicle (차종별 규격 데이터) ---
-// DN8은 기존 그대로, J100/J120/O100은 LH/RH 구분에 맞춰서 재구성했습니다.
+// --- Inspection Specs ---
 const INSPECTION_SPECS = {
   'DN8': [
-    { part: 'FRT LH A', spec: '1176±5' },
-    { part: 'FRT RH A', spec: '1176±5' },
-    { part: 'RR LH A', spec: '644±5' },
-    { part: 'RR LH C', spec: '396±3' },
-    { part: 'RR LH D', spec: '293±3' },
-    { part: 'RR RH A', spec: '644±5' },
-    { part: 'RR RH C', spec: '396±3' },
-    { part: 'RR RH D', spec: '293±3' },
+    { part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' },
+    { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' },
+    { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' },
+    { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' },
   ],
-  // J100: LH/RH 구분 (규격 동일 가정, 다르면 수정 가능)
   'J100': [
-    { part: 'J100 LH RR A', spec: '708±5' },
-    { part: 'J100 LH RR C', spec: '388±5' },
-    { part: 'J100 LH RR D', spec: '273±3' },
-    { part: 'J100 RH RR A', spec: '708±5' },
-    { part: 'J100 RH RR C', spec: '388±5' },
-    { part: 'J100 RH RR D', spec: '273±3' },
+    { part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' },
   ],
-  // J120: LH/RH 구분
   'J120': [
-    { part: 'J120 LH A', spec: '650±5' },
-    { part: 'J120 LH E', spec: '250±3' },
-    { part: 'J120 RH A', spec: '650±5' },
-    { part: 'J120 RH E', spec: '250±3' },
+    { part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' },
   ],
-  // O100: LH/RH 구분
   'O100': [
-    { part: 'O100 LH A', spec: '753±5' },
-    { part: 'O100 LH D', spec: '270±3' },
-    { part: 'O100 LH B1', spec: '258±3' },
-    { part: 'O100 RH A', spec: '753±5' },
-    { part: 'O100 RH D', spec: '270±3' },
-    { part: 'O100 RH B1', spec: '258±3' },
+    { part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' },
   ]
 };
 
-// --- Form Templates ---
+// --- Form Templates (바코드 설정 제거됨) ---
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -149,12 +131,9 @@ const FORM_TEMPLATES = {
       { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true }
     ],
     rows: (model) => {
-      // [요청 반영] 검사일보 구분 항목 변경 (J100, J120, O100)
       if (model === 'J100') return ['J100 LH', 'J100 RH'];
       if (model === 'J120') return ['J120 LH', 'J120 RH'];
       if (model === 'O100') return ['O100 LH', 'O100 RH'];
-      
-      // 그 외 (DN8, GN7 등)
       return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'];
     }
   }
@@ -172,7 +151,6 @@ const getFormType = (process) => {
 
 const LoginScreen = ({ onLogin }) => {
   const ADMIN_PASSWORD = '1234abc'; 
-
   const [role, setRole] = useState('worker');
   const [name, setName] = useState('');
   const [adminId, setAdminId] = useState('');
@@ -182,19 +160,12 @@ const LoginScreen = ({ onLogin }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-
     if (role === 'worker') {
-      if (name.trim()) {
-        onLogin({ name, role });
-      } else {
-        setError('이름을 입력해주세요.');
-      }
+      if (name.trim()) onLogin({ name, role });
+      else setError('이름을 입력해주세요.');
     } else {
-      if (adminId === 'admin' && password === ADMIN_PASSWORD) {
-        onLogin({ name: '관리자', role });
-      } else {
-        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
-      }
+      if (adminId === 'admin' && password === ADMIN_PASSWORD) onLogin({ name: '관리자', role });
+      else setError('아이디 또는 비밀번호가 올바르지 않습니다.');
     }
   };
 
@@ -208,82 +179,30 @@ const LoginScreen = ({ onLogin }) => {
         </div>
         <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
         <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 넣고 로그인을 눌러주세요</p>
-        
         <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => { setRole('worker'); setError(''); }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
-              role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'
-            }`}
-          >
-            작업자
-          </button>
-          <button
-            type="button"
-            onClick={() => { setRole('admin'); setError(''); }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${
-              role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'
-            }`}
-          >
-            관리자
-          </button>
+          <button type="button" onClick={() => { setRole('worker'); setError(''); }} className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'}`}>작업자</button>
+          <button type="button" onClick={() => { setRole('admin'); setError(''); }} className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'}`}>관리자</button>
         </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           {role === 'worker' ? (
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                placeholder="성명 입력"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <input type="text" required className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="성명 입력" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
           ) : (
             <>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                  placeholder="admin"
-                  value={adminId}
-                  onChange={(e) => setAdminId(e.target.value)}
-                />
+                <input type="text" required className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="admin" value={adminId} onChange={(e) => setAdminId(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                  placeholder="****"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <input type="password" required className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="****" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             </>
           )}
-
-          {error && (
-            <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1">
-              <AlertCircle size={14} /> {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm
-              ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}
-            `}
-          >
-            로그인
-          </button>
+          {error && <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</div>}
+          <button type="submit" className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>로그인</button>
         </form>
       </div>
     </div>
@@ -317,11 +236,13 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle, processType]);
 
-  const handleCellChange = (rowLabel, colKey, value, isDefect, colType) => {
+  const handleCellChange = (rowLabel, colKey, value) => {
     const newData = { ...formData };
     if (!newData[rowLabel]) newData[rowLabel] = {};
     
-    const finalValue = colType === 'number' ? (Number(value) || 0) : value;
+    const colDef = template.columns.find(c => c.key === colKey);
+    const finalValue = colDef.type === 'number' ? (Number(value) || 0) : value;
+    
     newData[rowLabel][colKey] = finalValue;
     setFormData(newData);
 
@@ -331,9 +252,9 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     Object.keys(newData).forEach(r => {
       Object.keys(newData[r]).forEach(c => {
         const val = newData[r][c];
-        const colDef = template.columns.find(col => col.key === c);
-        if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += (Number(val) || 0);
-        if (colDef?.isDefect) totalDefect += (Number(val) || 0);
+        const cDef = template.columns.find(col => col.key === c);
+        if (cDef?.key === 'qty' || cDef?.key === 'check_qty') totalQty += (Number(val) || 0);
+        if (cDef?.isDefect) totalDefect += (Number(val) || 0);
       });
     });
 
@@ -362,7 +283,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
                 {rowLabel}
               </td>
               {template.columns.map(col => (
-                <td key={col.key} className="border border-black p-0 h-8">
+                <td key={col.key} className="border border-black p-0 h-8 relative group">
                   <input
                     type={col.type === 'number' ? 'number' : 'text'}
                     min={col.type === 'number' ? "0" : undefined}
@@ -370,7 +291,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
                     className={`w-full h-full text-center outline-none bg-transparent text-sm
                       ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
                     `}
-                    onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value, col.isDefect, col.type)}
+                    onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
                   />
                 </td>
               ))}
@@ -542,11 +463,15 @@ const WorkerDashboard = ({ user, db, appId }) => {
   const [processType, setProcessType] = useState('');
   const [notes, setNotes] = useState('');
   const [formDetails, setFormDetails] = useState({});
-  const [measurements, setMeasurements] = useState({}); // Store measurement data
+  const [measurements, setMeasurements] = useState({});
   const [totalQty, setTotalQty] = useState(0);
   const [totalDefect, setTotalDefect] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  
+  // 작업 시간 State
+  const [endHour, setEndHour] = useState('17');
+  const [endMinute, setEndMinute] = useState('30');
 
   const logTitle = useMemo(() => getLogTitle(vehicle, processType), [vehicle, processType]);
 
@@ -560,6 +485,9 @@ const WorkerDashboard = ({ user, db, appId }) => {
     e.preventDefault();
     if (!vehicle || !processType) return;
     
+    // 작업 시간 포맷팅 (08:30 ~ 종료시간)
+    const workTime = `08:30 ~ ${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'work_logs'), {
@@ -569,10 +497,11 @@ const WorkerDashboard = ({ user, db, appId }) => {
         processType: processType,
         logTitle: logTitle,
         details: formDetails,
-        measurements: measurements, // Save measurement data
+        measurements: measurements,
         productionQty: totalQty,
         defectQty: totalDefect,
         notes: notes,
+        workTime: workTime, // 작업 시간 저장
         timestamp: serverTimestamp(),
       });
       
@@ -631,6 +560,32 @@ const WorkerDashboard = ({ user, db, appId }) => {
             <div className="flex-1 flex items-center px-3 text-sm font-medium">
               {user.name}
             </div>
+            <div className="w-24 bg-gray-100 border-l border-r border-black flex items-center justify-center font-bold text-sm py-2">
+              작업시간
+            </div>
+            <div className="flex-1 flex items-center justify-center px-2 text-sm font-medium bg-blue-50/50">
+              {/* 작업 시간 선택 UI */}
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-gray-700">08:30</span>
+                <span className="text-gray-400">~</span>
+                <select 
+                  value={endHour} 
+                  onChange={(e) => setEndHour(e.target.value)}
+                  className="bg-transparent font-bold text-blue-900 outline-none text-center appearance-none cursor-pointer border-b border-blue-200 hover:border-blue-500"
+                >
+                  {HOURS.map(h => <option key={h} value={h}>{h.toString().padStart(2, '0')}</option>)}
+                </select>
+                <span>:</span>
+                <select 
+                  value={endMinute} 
+                  onChange={(e) => setEndMinute(e.target.value)}
+                  className="bg-transparent font-bold text-blue-900 outline-none text-center appearance-none cursor-pointer border-b border-blue-200 hover:border-blue-500"
+                >
+                  {MINUTES.map(m => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
+                </select>
+                <Clock size={14} className="text-gray-400 ml-1" />
+              </div>
+            </div>
           </div>
           <div className="flex">
             <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
@@ -683,7 +638,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
               onChange={handleFormChange} 
             />
 
-            {/* 치수 검사 테이블 (DN8, J100, J120, O100 등 지원) */}
             {processType === '검사' && INSPECTION_SPECS[vehicle] && (
               <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} />
             )}
@@ -779,7 +733,7 @@ const AdminDashboard = ({ db, appId }) => {
     });
     
     const detailHeaders = Array.from(allDetailKeys).sort();
-    const headers = ['날짜', '작업자', '차종', '공정', '일보명', '총생산', '총불량', '특이사항', ...detailHeaders];
+    const headers = ['날짜', '작업자', '차종', '공정', '일보명', '작업시간', '총생산', '총불량', '특이사항', ...detailHeaders];
     const csvRows = [headers.join(',')];
 
     data.forEach(row => {
@@ -789,6 +743,7 @@ const AdminDashboard = ({ db, appId }) => {
         `"${row.vehicleModel}"`,
         `"${row.processType}"`,
         `"${row.logTitle}"`,
+        `"${row.workTime || ''}"`, // 작업 시간 추가
         row.productionQty || 0,
         row.defectQty || 0,
         `"${row.notes || ''}"`
@@ -860,6 +815,7 @@ const AdminDashboard = ({ db, appId }) => {
                 <th className="px-4 py-3 border-r">일시</th>
                 <th className="px-4 py-3 border-r">작업자</th>
                 <th className="px-4 py-3 border-r">내역</th>
+                <th className="px-4 py-3 border-r">작업시간</th>
                 <th className="px-4 py-3 border-r w-48">상세 수량</th>
                 <th className="px-4 py-3 border-r text-right text-red-600">불량</th>
                 <th className="px-4 py-3 border-r">특이사항</th>
@@ -868,9 +824,9 @@ const AdminDashboard = ({ db, appId }) => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
+                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
               ) : logs.length === 0 ? (
-                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-400">데이터가 없습니다.</td></tr>
+                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">데이터가 없습니다.</td></tr>
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-200 hover:bg-gray-50">
@@ -880,6 +836,9 @@ const AdminDashboard = ({ db, appId }) => {
                     <td className="px-4 py-3 border-r font-bold align-top">{log.workerName}</td>
                     <td className="px-4 py-3 border-r align-top">
                       <span className="font-bold text-blue-800">[{log.vehicleModel}]</span> {log.logTitle}
+                    </td>
+                    <td className="px-4 py-3 border-r align-top whitespace-nowrap text-xs text-gray-600 bg-gray-50">
+                      {log.workTime || '-'}
                     </td>
                     <td className="px-4 py-3 border-r align-top bg-gray-50">{renderDetailedQty(log)}</td>
                     <td className="px-4 py-3 border-r text-right text-red-600 font-bold align-top">
