@@ -8,9 +8,8 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Scan, Camera
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Scan
 } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
@@ -98,8 +97,8 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      // FMB LOT: 바코드(isBarcode)와 문자인식(isOCR) 모두 활성화
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isBarcode: true, isOCR: true },
+      // [수정] FMB LOT만 바코드 활성화 (isBarcode: true)
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isBarcode: true },
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
@@ -150,22 +149,24 @@ const getFormType = (process) => {
 
 // --- Components ---
 
-// Barcode Scanner Modal (CDN Load)
+// Barcode Scanner Modal (CDN Load - 에러 방지용)
 const BarcodeScannerModal = ({ onClose, onScan }) => {
   const [libLoaded, setLibLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const scannerRef = useRef(null);
 
   useEffect(() => {
+    // 이미 로드되어 있으면 바로 사용
     if (window.Html5QrcodeScanner) {
       setLibLoaded(true);
       return;
     }
+    // CDN 스크립트 동적 로드
     const script = document.createElement('script');
     script.src = "https://unpkg.com/html5-qrcode";
     script.async = true;
     script.onload = () => setLibLoaded(true);
-    script.onerror = () => setErrorMsg('바코드 라이브러리 로드 실패');
+    script.onerror = () => setErrorMsg('바코드 라이브러리 로드 실패. 인터넷 연결을 확인하세요.');
     document.body.appendChild(script);
   }, []);
 
@@ -182,10 +183,12 @@ const BarcodeScannerModal = ({ onClose, onScan }) => {
           onScan(decodedText);
           scanner.clear().catch(console.error);
           onClose();
-        }, (error) => { /* ignore */ });
+        }, (error) => {
+          // ignore scan errors
+        });
       } catch (err) {
         console.error(err);
-        setErrorMsg("카메라 초기화 실패");
+        setErrorMsg("카메라 초기화 실패. 권한을 허용해주세요.");
       }
     }
     return () => {
@@ -203,124 +206,10 @@ const BarcodeScannerModal = ({ onClose, onScan }) => {
           <h3 className="font-bold text-lg">바코드 스캔</h3>
           <button onClick={onClose}><X size={24} /></button>
         </div>
-        {!libLoaded && !errorMsg && <p className="text-center p-4">로딩 중...</p>}
+        {!libLoaded && !errorMsg && <p className="text-center p-4">스캐너 로딩 중...</p>}
         {errorMsg && <p className="text-center text-red-500 p-4">{errorMsg}</p>}
         <div id="reader" className="w-full"></div>
-      </div>
-    </div>
-  );
-};
-
-// OCR Scanner Modal (Tesseract.js via CDN)
-const OCRScannerModal = ({ onClose, onScan }) => {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [libLoaded, setLibLoaded] = useState(false);
-
-  useEffect(() => {
-    // Load Tesseract
-    if (window.Tesseract) {
-      setLibLoaded(true);
-    } else {
-      const script = document.createElement('script');
-      script.src = "https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js";
-      script.async = true;
-      script.onload = () => setLibLoaded(true);
-      document.body.appendChild(script);
-    }
-
-    // Start Camera
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.error("Camera Error:", err);
-        alert("카메라를 실행할 수 없습니다.");
-        onClose();
-      }
-    };
-    startCamera();
-
-    return () => {
-      // Stop Camera
-      if (videoRef.current && videoRef.current.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [onClose]);
-
-  const handleCapture = async () => {
-    if (!libLoaded || isProcessing) return;
-    setIsProcessing(true);
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (video && canvas) {
-      const context = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      try {
-        const { data: { text } } = await window.Tesseract.recognize(canvas, 'eng');
-        // 간단한 정제: 공백 제거 및 특수문자 일부 처리
-        const cleanedText = text.replace(/\n/g, ' ').trim();
-        if (cleanedText) {
-          if (window.confirm(`인식된 텍스트: "${cleanedText}"\n입력하시겠습니까?`)) {
-            onScan(cleanedText);
-            onClose();
-          }
-        } else {
-          alert("글자를 인식하지 못했습니다. 다시 시도해주세요.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("분석 중 오류가 발생했습니다.");
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4">
-      <div className="w-full max-w-sm flex flex-col gap-4">
-        <div className="flex justify-between items-center text-white">
-          <h3 className="font-bold text-lg">문자 인식 (OCR)</h3>
-          <button onClick={onClose}><X size={24} /></button>
-        </div>
-        
-        <div className="relative bg-black rounded-lg overflow-hidden aspect-[3/4]">
-          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-          <canvas ref={canvasRef} className="hidden" />
-          <div className="absolute inset-0 border-2 border-green-500 opacity-50 pointer-events-none m-8 rounded-lg"></div>
-          {isProcessing && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold">
-              분석 중...
-            </div>
-          )}
-        </div>
-
-        <button 
-          onClick={handleCapture}
-          disabled={!libLoaded || isProcessing}
-          className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg flex items-center justify-center gap-2
-            ${isProcessing ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-500'}
-          `}
-        >
-          <Camera size={24} />
-          {isProcessing ? '분석하고 있습니다...' : '촬영 및 분석'}
-        </button>
-        <p className="text-gray-400 text-xs text-center">
-          * 글자가 녹색 테두리 안에 잘 보이게 촬영해주세요.<br/>
-          * 조명이 밝고 흔들리지 않아야 잘 인식됩니다.
-        </p>
+        <p className="text-center text-sm text-gray-500 mt-4">바코드를 사각형 안에 맞춰주세요</p>
       </div>
     </div>
   );
@@ -391,8 +280,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const template = FORM_TEMPLATES[formType];
   const rowLabels = template.rows(vehicle);
   const [formData, setFormData] = useState({});
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [showOCRScanner, setShowOCRScanner] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState({ row: null, col: null });
 
   useEffect(() => {
@@ -441,22 +329,16 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     onChange(newData, totalQty, totalDefect);
   };
 
-  const openBarcodeScanner = (rowLabel, colKey) => {
+  const openScanner = (rowLabel, colKey) => {
     setScanTarget({ row: rowLabel, col: colKey });
-    setShowBarcodeScanner(true);
-  };
-
-  const openOCRScanner = (rowLabel, colKey) => {
-    setScanTarget({ row: rowLabel, col: colKey });
-    setShowOCRScanner(true);
+    setShowScanner(true);
   };
 
   const handleScanSuccess = (decodedText) => {
     if (scanTarget.row && scanTarget.col) {
       handleCellChange(scanTarget.row, scanTarget.col, decodedText);
     }
-    setShowBarcodeScanner(false);
-    setShowOCRScanner(false);
+    setShowScanner(false);
   };
 
   return (
@@ -492,28 +374,15 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
                       `}
                       onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
                     />
-                    {/* Barcode & OCR Icons for FMB LOT */}
-                    {(col.isBarcode || col.isOCR) && (
-                      <div className="absolute right-0 top-0 h-full flex items-center pr-1 opacity-50 hover:opacity-100 transition-opacity">
-                        {col.isBarcode && (
-                          <button 
-                            onClick={() => openBarcodeScanner(rowLabel, col.key)}
-                            className="p-1 text-gray-500 hover:text-blue-600"
-                            title="바코드 스캔"
-                          >
-                            <Scan size={14} />
-                          </button>
-                        )}
-                        {col.isOCR && (
-                          <button 
-                            onClick={() => openOCRScanner(rowLabel, col.key)}
-                            className="p-1 text-gray-500 hover:text-green-600"
-                            title="문자(OCR) 인식"
-                          >
-                            <Camera size={14} />
-                          </button>
-                        )}
-                      </div>
+                    {/* isBarcode가 true인 컬럼(FMB LOT)에만 스캔 아이콘 표시 */}
+                    {col.isBarcode && (
+                      <button 
+                        onClick={() => openScanner(rowLabel, col.key)}
+                        className="absolute right-0 top-0 h-full px-2 text-gray-400 hover:text-blue-600 opacity-50 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm"
+                        title="바코드 스캔"
+                      >
+                        <Scan size={16} />
+                      </button>
                     )}
                   </td>
                 ))}
@@ -522,15 +391,9 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
           </tbody>
         </table>
       </div>
-      {showBarcodeScanner && (
+      {showScanner && (
         <BarcodeScannerModal 
-          onClose={() => setShowBarcodeScanner(false)} 
-          onScan={handleScanSuccess} 
-        />
-      )}
-      {showOCRScanner && (
-        <OCRScannerModal 
-          onClose={() => setShowOCRScanner(false)} 
+          onClose={() => setShowScanner(false)} 
           onScan={handleScanSuccess} 
         />
       )}
