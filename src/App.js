@@ -59,63 +59,63 @@ const getLogTitle = (model, process) => {
 };
 
 // --- [수정] 차종별/공정별 작업표준서 이미지 설정 ---
-// 이미지 주소("https://...") 부분을 실제 사용하시는 이미지 링크로 바꿔주세요.
+// 구글 드라이브 링크를 이미지 태그용(export=view)으로 변환하여 적용했습니다.
 const PROCESS_STANDARDS = {
   'DN8': {
-    '소재준비': [ // 6장
-      "https://drive.google.com/file/d/1Uvn87RCgaE_SC8VJf4ij_Dae_DL6JWMi/view?usp=drive_link",
-      "https://drive.google.com/file/d/1SnwCVW6Ynha5WiYyiXeJ3SuSScmvohTJ/view?usp=drive_link",
-      "https://drive.google.com/file/d/148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F/view?usp=drive_link",
-      "https://drive.google.com/file/d/17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a/view?usp=drive_link",
-      "https://drive.google.com/file/d/1cCxUBXpq2eNZK3Th1vgebIuOL2TH2Ns_/view?usp=drive_link",
-      "https://drive.google.com/file/d/1slk73RU_sHIZGJwar5R7FM-Ni-hOLgzF/view?usp=drive_link",
-      "https://drive.google.com/file/d/1FuFdKIyMCYczr7gVU466h5VMYy9cGtdZ/view?usp=drive_link",
+    '소재준비': [
+      "https://drive.google.com/uc?export=view&id=1Uvn87RCgaE_SC8VJf4ij_Dae_DL6JWMi",
+      "https://drive.google.com/uc?export=view&id=1SnwCVW6Ynha5WiYyiXeJ3SuSScmvohTJ",
+      "https://drive.google.com/uc?export=view&id=148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F",
+      "https://drive.google.com/uc?export=view&id=17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a",
+      "https://drive.google.com/uc?export=view&id=1cCxUBXpq2eNZK3Th1vgebIuOL2TH2Ns_",
+      "https://drive.google.com/uc?export=view&id=1slk73RU_sHIZGJwar5R7FM-Ni-hOLgzF",
+      "https://drive.google.com/uc?export=view&id=1FuFdKIyMCYczr7gVU466h5VMYy9cGtdZ",
     ],
-    '프레스': [ // 2장
-      "https://drive.google.com/file/d/1zZ8P__RUohyIGaK0ah7Zqx_dpppqupBX/view?usp=drive_link",
-      "https://drive.google.com/file/d/1J_N4GPeADA6LBq8Zm9_wuJ4sYFdjw8_Q/view?usp=drive_link",
-      "https://drive.google.com/file/d/1vBQ6MKpyGjmH3YXpajnv6Q4wo_6fIX8H/view?usp=drive_link",
+    '프레스': [
+      "https://drive.google.com/uc?export=view&id=1zZ8P__RUohyIGaK0ah7Zqx_dpppqupBX",
+      "https://drive.google.com/uc?export=view&id=1J_N4GPeADA6LBq8Zm9_wuJ4sYFdjw8_Q",
+      "https://drive.google.com/uc?export=view&id=1vBQ6MKpyGjmH3YXpajnv6Q4wo_6fIX8H",
     ],
-    '후가공': [ // 2장
-      "https://drive.google.com/file/d/1R6O7wWFrIXRKwTa9kd5uTNr_0mIKw269/view?usp=drive_link",
-      "https://drive.google.com/file/d/1QecwgaqnlYhhsXzj6LDFJ-mckAJrSdOL/view?usp=drive_link",
+    '후가공': [
+      "https://drive.google.com/uc?export=view&id=1R6O7wWFrIXRKwTa9kd5uTNr_0mIKw269",
+      "https://drive.google.com/uc?export=view&id=1QecwgaqnlYhhsXzj6LDFJ-mckAJrSdOL",
     ],
-    '검사': [ // 2장
-      "https://drive.google.com/file/d/11ne-PUnw0-U03R2itZ2l10IXQ-ghb0Ho/view?usp=drive_link",
-      "https://drive.google.com/file/d/1s1KYFBVRMLkyLaaqg6L5jX46HPkTeCt_/view?usp=drive_link",
-      "https://drive.google.com/file/d/1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW/view?usp=drive_link",
+    '검사': [
+      "https://drive.google.com/uc?export=view&id=11ne-PUnw0-U03R2itZ2l10IXQ-ghb0Ho",
+      "https://drive.google.com/uc?export=view&id=1s1KYFBVRMLkyLaaqg6L5jX46HPkTeCt_",
+      "https://drive.google.com/uc?export=view&id=1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW",
     ]
   },
   'GN7': {
-    '소재준비': ["https://drive.google.com/file/d/1RnIVv4JtntNY78uWGEu24_2Ea-P77wzU/view?usp=drive_link"], // 1장
-    '프레스': ["https://drive.google.com/file/d/1tTlzvgbV1PzG7MdL-wTN-8zQrAuyhYS9/view?usp=drive_link"], // 1장
-    '후가공': ["https://drive.google.com/file/d/15HCYEnb2xeQtioTkesC9ZSrK0NnkYlN3/view?usp=drive_link"], // 1장
-    '검사': ["https://via.placeholder.com/600x800?text=GN7+Inspect+Page+1"], // 1장 (요청엔 없었으나 통일성 위해 추가)
+    '소재준비': ["https://drive.google.com/uc?export=view&id=1RnIVv4JtntNY78uWGEu24_2Ea-P77wzU"],
+    '프레스': ["https://drive.google.com/uc?export=view&id=1tTlzvgbV1PzG7MdL-wTN-8zQrAuyhYS9"],
+    '후가공': ["https://drive.google.com/uc?export=view&id=15HCYEnb2xeQtioTkesC9ZSrK0NnkYlN3"],
+    '검사': [], // GN7 검사 이미지가 제공되지 않아 빈 배열로 둠
   },
   'J100': {
-    '소재준비': [ // 3장
-      "https://drive.google.com/file/d/1qP8w1ASRcIiOaMyxDvxv_pxjaJWSsSeB/view?usp=drive_link",
-      "https://drive.google.com/file/d/1zn6nDa-qbRxP0GqW5Rb0PS6pediHeHxE/view?usp=drive_link",
-      "https://drive.google.com/file/d/1jaOpILpuj1aRwctVfQqJHmOqzuc6_FXz/view?usp=drive_link",
+    '소재준비': [
+      "https://drive.google.com/uc?export=view&id=1qP8w1ASRcIiOaMyxDvxv_pxjaJWSsSeB",
+      "https://drive.google.com/uc?export=view&id=1zn6nDa-qbRxP0GqW5Rb0PS6pediHeHxE",
+      "https://drive.google.com/uc?export=view&id=1jaOpILpuj1aRwctVfQqJHmOqzuc6_FXz",
     ],
-    '프레스': ["https://drive.google.com/file/d/1JvxZetC1mmIsH_0F-WlrvOo0nDGGt64f/view?usp=drive_link"], // 1장
-    '후가공': ["https://drive.google.com/file/d/1-iOTY8MzoBvHX7SItNRvBkWUFX252Ihe/view?usp=drive_link"], // 1장
-    '검사': ["https://drive.google.com/file/d/1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW/view?usp=drive_link"], 
+    '프레스': ["https://drive.google.com/uc?export=view&id=1JvxZetC1mmIsH_0F-WlrvOo0nDGGt64f"],
+    '후가공': ["https://drive.google.com/uc?export=view&id=1-iOTY8MzoBvHX7SItNRvBkWUFX252Ihe"],
+    '검사': ["https://drive.google.com/uc?export=view&id=1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW"], 
   },
   'J120': {
-    '소재준비': ["https://drive.google.com/file/d/1lNczJK5to6dsdu6CLXmTMemW9ykNILTw/view?usp=drive_link"], // 1장
-    '프레스': ["https://drive.google.com/file/d/1nGuRNuA8S6hq8h_GDh5XnqLM5quehn1q/view?usp=drive_link"], // 1장
-    '후가공': ["https://drive.google.com/file/d/19WPnXzCjMuEY8mfOjqHgVvdf8ODTQmsD/view?usp=drive_link"], // 1장
-    '검사': ["https://drive.google.com/file/d/1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW/view?usp=drive_link"],
+    '소재준비': ["https://drive.google.com/uc?export=view&id=1lNczJK5to6dsdu6CLXmTMemW9ykNILTw"],
+    '프레스': ["https://drive.google.com/uc?export=view&id=1nGuRNuA8S6hq8h_GDh5XnqLM5quehn1q"],
+    '후가공': ["https://drive.google.com/uc?export=view&id=19WPnXzCjMuEY8mfOjqHgVvdf8ODTQmsD"],
+    '검사': ["https://drive.google.com/uc?export=view&id=1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW"],
   },
   'O100': {
     '소재준비': [
-      "https://drive.google.com/file/d/1CRGj8tBgFMo6YSzP5aaiFI8FsGWE0d1C/view?usp=drive_link",
-      "https://drive.google.com/file/d/1ZHtk9CDEmpKDXb7r4sfUPsXQLyGhnLBS/view?usp=drive_link"
-      ], // 1장 (기본)
-    '프레스': ["https://drive.google.com/file/d/1LkIBIWYm5FPZLEyexq3FcYj5R1qPlvvE/view?usp=drive_link"],
-    '후가공': ["https://drive.google.com/file/d/1ZFMpxYnEh3UJHss5U_eLMY8s_k247k19/view?usp=drive_link"],
-    '검사': ["https://drive.google.com/file/d/1nAlTvIirKIS9AVk1vp5wBpkqpeMaEbbt/view?usp=drive_link"],
+      "https://drive.google.com/uc?export=view&id=1CRGj8tBgFMo6YSzP5aaiFI8FsGWE0d1C",
+      "https://drive.google.com/uc?export=view&id=1ZHtk9CDEmpKDXb7r4sfUPsXQLyGhnLBS"
+    ],
+    '프레스': ["https://drive.google.com/uc?export=view&id=1LkIBIWYm5FPZLEyexq3FcYj5R1qPlvvE"],
+    '후가공': ["https://drive.google.com/uc?export=view&id=1ZFMpxYnEh3UJHss5U_eLMY8s_k247k19"],
+    '검사': ["https://drive.google.com/uc?export=view&id=1nAlTvIirKIS9AVk1vp5wBpkqpeMaEbbt"],
   }
 };
 
@@ -260,7 +260,6 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
 
 // Standard Operation Procedure Modal (Dynamic Image List)
 const StandardModal = ({ vehicle, process, onClose }) => {
-  // 차량과 공정에 맞는 이미지 목록 가져오기
   const standardImages = PROCESS_STANDARDS[vehicle]?.[process] || [];
 
   return (
