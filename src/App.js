@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
+// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -896,7 +897,7 @@ const AdminDashboard = ({ db, appId }) => {
         const [r, c] = h.split(/_(.+)/);
         const cellData = row.details?.[r]?.[c] || '';
         // 엑셀에서 이미지는 텍스트로 대체
-        return cellData.startsWith('data:image') ? '(사진첨부됨)' : cellData;
+        return (typeof cellData === 'string' && cellData.startsWith('data:image')) ? '(사진첨부됨)' : cellData;
       });
       csvRows.push([...vals, ...details].join(','));
     });
