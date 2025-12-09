@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
 const firebaseConfig = {
   apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
   authDomain: "mes-worklog-system.firebaseapp.com",
@@ -812,15 +811,16 @@ const AdminDashboard = ({ db, appId }) => {
   const [loading, setLoading] = useState(true);
   const [editingLog, setEditingLog] = useState(null);
   const [viewImage, setViewImage] = useState(null);
-  // 월별 필터 상태 (기본값: 현재 년-월)
+  
+  // 필터 상태
   const [filterDate, setFilterDate] = useState(() => new Date().toISOString().slice(0, 7));
+  const [filterVehicle, setFilterVehicle] = useState('All');
+  const [filterProcess, setFilterProcess] = useState('All');
+  const [filterWorker, setFilterWorker] = useState('All');
 
   useEffect(() => {
-    // 필터 날짜(월)가 변경될 때마다 쿼리 실행
     const [year, month] = filterDate.split('-');
-    // 해당 월의 1일 0시
     const startOfMonth = new Date(year, month - 1, 1);
-    // 다음 달의 1일 0시
     const endOfMonth = new Date(year, month, 1);
 
     const q = query(
@@ -836,11 +836,24 @@ const AdminDashboard = ({ db, appId }) => {
       setLoading(false);
     });
 
-    // 필터 변경 시 더보기 초기화
     setVisibleCount(20);
-
     return () => unsubscribe();
   }, [db, filterDate]);
+
+  // 필터링된 로그 계산
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => {
+      const matchVehicle = filterVehicle === 'All' || log.vehicleModel === filterVehicle;
+      const matchProcess = filterProcess === 'All' || log.processType === filterProcess;
+      const matchWorker = filterWorker === 'All' || log.workerName === filterWorker;
+      return matchVehicle && matchProcess && matchWorker;
+    });
+  }, [logs, filterVehicle, filterProcess, filterWorker]);
+
+  // 작업자 목록 추출
+  const uniqueWorkers = useMemo(() => {
+    return ['All', ...new Set(logs.map(log => log.workerName))].sort();
+  }, [logs]);
 
   const handleDelete = async (id) => {
     if (window.confirm('정말 이 작업일보를 삭제하시겠습니까?')) {
@@ -866,7 +879,6 @@ const AdminDashboard = ({ db, appId }) => {
   const exportToCSV = (data) => {
     if (!data || data.length === 0) return alert("데이터가 없습니다.");
     
-    // CSV Export Logic
     const allDetailKeys = new Set();
     data.forEach(row => {
       if (row.details) Object.keys(row.details).forEach(rowKey => Object.keys(row.details[rowKey]).forEach(colKey => allDetailKeys.add(`${rowKey}_${colKey}`)));
@@ -896,7 +908,6 @@ const AdminDashboard = ({ db, appId }) => {
         }
         const [r, c] = h.split(/_(.+)/);
         const cellData = row.details?.[r]?.[c] || '';
-        // 엑셀에서 이미지는 텍스트로 대체
         return (typeof cellData === 'string' && cellData.startsWith('data:image')) ? '(사진첨부됨)' : cellData;
       });
       csvRows.push([...vals, ...details].join(','));
@@ -934,7 +945,6 @@ const AdminDashboard = ({ db, appId }) => {
             <span className="font-bold text-blue-600 block mb-1">치수 검사 데이터 있음</span>
           </div>
         )}
-        {/* 이미지 데이터 확인용 */}
         {Object.values(log.details).some(row => Object.values(row).some(v => typeof v === 'string' && v.startsWith('data:image'))) && (
            <div className="mt-2 pt-2 border-t border-gray-200 text-purple-600 font-bold flex items-center gap-1 cursor-pointer hover:text-purple-800" onClick={() => {
               const firstImg = Object.values(log.details).flatMap(row => Object.values(row)).find(v => typeof v === 'string' && v.startsWith('data:image'));
@@ -947,7 +957,8 @@ const AdminDashboard = ({ db, appId }) => {
     );
   };
   
-  const visibleLogs = logs.slice(0, visibleCount);
+  // 페이징 처리 (필터링된 결과 기준)
+  const visibleLogs = filteredLogs.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
@@ -960,18 +971,53 @@ const AdminDashboard = ({ db, appId }) => {
           <p className="text-gray-500 text-xs mt-1">데이터 조회 및 엑셀 다운로드</p>
         </div>
         
-        {/* 월 선택 필터 추가 */}
-        <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
-          <Filter size={16} className="text-gray-500" />
-          <input 
-            type="month" 
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer"
-          />
+        {/* 필터 그룹 */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 월 선택 */}
+          <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
+            <Filter size={16} className="text-gray-500" />
+            <input 
+              type="month" 
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer"
+            />
+          </div>
+
+          {/* 차종 필터 */}
+          <select 
+            value={filterVehicle}
+            onChange={(e) => setFilterVehicle(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value="All">전체 차종</option>
+            {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+
+          {/* 공정 필터 */}
+          <select 
+            value={filterProcess}
+            onChange={(e) => setFilterProcess(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value="All">전체 공정</option>
+            {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+
+          {/* 작업자 필터 */}
+          <select 
+            value={filterWorker}
+            onChange={(e) => setFilterWorker(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value="All">전체 작업자</option>
+            {uniqueWorkers.map(w => (
+              w !== 'All' && <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
         </div>
 
-        <button onClick={() => exportToCSV(logs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded">
+        <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded">
           <FileSpreadsheet size={16} /> Excel 다운로드
         </button>
       </div>
@@ -995,7 +1041,7 @@ const AdminDashboard = ({ db, appId }) => {
               {loading ? (
                 <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
               ) : visibleLogs.length === 0 ? (
-                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">해당 월에 등록된 데이터가 없습니다.</td></tr>
+                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">조건에 맞는 데이터가 없습니다.</td></tr>
               ) : (
                 visibleLogs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-200 hover:bg-gray-50">
@@ -1031,14 +1077,14 @@ const AdminDashboard = ({ db, appId }) => {
           </table>
         </div>
         {/* Load More Button */}
-        {logs.length > visibleCount && (
+        {filteredLogs.length > visibleCount && (
           <div className="p-4 text-center border-t border-gray-200">
              <button 
                onClick={handleLoadMore}
                className="px-6 py-2 bg-gray-100 text-gray-600 font-bold rounded-full hover:bg-gray-200 transition flex items-center gap-2 mx-auto"
              >
                <ChevronDown size={18} />
-               더 보기 ({logs.length - visibleCount}개 남음)
+               더 보기 ({filteredLogs.length - visibleCount}개 남음)
              </button>
           </div>
         )}
