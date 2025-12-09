@@ -63,32 +63,32 @@ const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
       "/images/DN8_A_SO.jpeg",
-      "/images/DN8_FRT_SO_P",
-      "https://drive.google.com/uc?export=view&id=148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F",
-      "https://drive.google.com/uc?export=view&id=17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a",
-      "https://drive.google.com/uc?export=view&id=1cCxUBXpq2eNZK3Th1vgebIuOL2TH2Ns_",
-      "https://drive.google.com/uc?export=view&id=1slk73RU_sHIZGJwar5R7FM-Ni-hOLgzF",
-      "https://drive.google.com/uc?export=view&id=1FuFdKIyMCYczr7gVU466h5VMYy9cGtdZ",
+      "/images/DN8_FRT_SO_P.jpeg",
+      "/images/DN8_FRT_SO_Q.jpeg",
+      "/images/DN8_RR_SO_R.jpeg",
+      "/images/DN8_RR_SO_S.jpeg",
+      "/images/DN8_RR_SO_C.jpeg",
+      "/imgaes/DN8_RR_SO_D.jpeg",
     ],
     '프레스': [
-      "https://drive.google.com/uc?export=view&id=1zZ8P__RUohyIGaK0ah7Zqx_dpppqupBX",
-      "https://drive.google.com/uc?export=view&id=1J_N4GPeADA6LBq8Zm9_wuJ4sYFdjw8_Q",
-      "https://drive.google.com/uc?export=view&id=1vBQ6MKpyGjmH3YXpajnv6Q4wo_6fIX8H",
+      "/images/DN8_FRT_P.jpeg",
+      "/images/DN8_RR_P.jpeg",
+      "/images/DN8_RR_P_U.jpeg",
     ],
     '후가공': [
-      "https://drive.google.com/uc?export=view&id=1R6O7wWFrIXRKwTa9kd5uTNr_0mIKw269",
-      "https://drive.google.com/uc?export=view&id=1QecwgaqnlYhhsXzj6LDFJ-mckAJrSdOL",
+      "/images/DN8_FRT_HU.jpeg",
+      "/images/DN8_RR_HU.jpeg",
     ],
     '검사': [
-      "https://drive.google.com/uc?export=view&id=11ne-PUnw0-U03R2itZ2l10IXQ-ghb0Ho",
-      "https://drive.google.com/uc?export=view&id=1s1KYFBVRMLkyLaaqg6L5jX46HPkTeCt_",
-      "https://drive.google.com/uc?export=view&id=1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW",
+      "/images/DN8_G_P.jpeg",
+      "/images/DN8_G_R.jpeg",
+      "/images/DN8_O.jpeg",
     ]
   },
   'GN7': {
-    '소재준비': ["https://drive.google.com/uc?export=view&id=1RnIVv4JtntNY78uWGEu24_2Ea-P77wzU"],
-    '프레스': ["https://drive.google.com/uc?export=view&id=1tTlzvgbV1PzG7MdL-wTN-8zQrAuyhYS9"],
-    '후가공': ["https://drive.google.com/uc?export=view&id=15HCYEnb2xeQtioTkesC9ZSrK0NnkYlN3"],
+    '소재준비': ["/images/GN7_SO.jpeg"],
+    '프레스': ["/images/GN7_P.jpeg"],
+    '후가공': ["/images/GN7_HU.jpeg"],
     '검사': [], 
   },
   'J100': {
@@ -97,24 +97,24 @@ const PROCESS_STANDARDS = {
       "/images/J100_SO_B.jpg",
       "/images/J100_SO_C.jpg",
     ],
-    '프레스': ["https://drive.google.com/uc?export=view&id=1JvxZetC1mmIsH_0F-WlrvOo0nDGGt64f"],
-    '후가공': ["https://drive.google.com/uc?export=view&id=1-iOTY8MzoBvHX7SItNRvBkWUFX252Ihe"],
-    '검사': ["https://drive.google.com/uc?export=view&id=1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW"], 
+    '프레스': ["/images/J100_P.jpg"],
+    '후가공': ["/images/J100_HU.jpg"],
+    '검사': ["/images/DN8_O.jpeg"], 
   },
   'J120': {
-    '소재준비': ["https://drive.google.com/uc?export=view&id=1lNczJK5to6dsdu6CLXmTMemW9ykNILTw"],
-    '프레스': ["https://drive.google.com/uc?export=view&id=1nGuRNuA8S6hq8h_GDh5XnqLM5quehn1q"],
-    '후가공': ["https://drive.google.com/uc?export=view&id=19WPnXzCjMuEY8mfOjqHgVvdf8ODTQmsD"],
-    '검사': ["https://drive.google.com/uc?export=view&id=1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW"],
+    '소재준비': ["/images/J120_SO.jpg"],
+    '프레스': ["/images/J120_P.jpg"],
+    '후가공': ["/images/J120_HU.jpg"],
+    '검사': ["/images/DN8_O.jpeg"],
   },
   'O100': {
     '소재준비': [
-      "https://drive.google.com/uc?export=view&id=1CRGj8tBgFMo6YSzP5aaiFI8FsGWE0d1C",
-      "https://drive.google.com/uc?export=view&id=1ZHtk9CDEmpKDXb7r4sfUPsXQLyGhnLBS"
+      "/images/O100_SO.jpeg",
+      "/images/O100_SO_B1.jpeg"
     ],
-    '프레스': ["https://drive.google.com/uc?export=view&id=1LkIBIWYm5FPZLEyexq3FcYj5R1qPlvvE"],
-    '후가공': ["https://drive.google.com/uc?export=view&id=1ZFMpxYnEh3UJHss5U_eLMY8s_k247k19"],
-    '검사': ["https://drive.google.com/uc?export=view&id=1nAlTvIirKIS9AVk1vp5wBpkqpeMaEbbt"],
+    '프레스': ["/images/O100_P.jpeg"],
+    '후가공': ["/images/O100_HU.jpeg"],
+    '검사': ["/images/O100_T.jpeg"],
   }
 };
 
