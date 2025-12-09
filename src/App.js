@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, updateDoc 
@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Scan
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -97,8 +97,8 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      // [수정] FMB LOT만 바코드 활성화 (isBarcode: true)
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isBarcode: true },
+      // FMB LOT: isPhoto: true 설정 (카메라 입력)
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
       { key: 'lot_a', label: 'A소재 LOT', type: 'text' },
       { key: 'lot_b', label: 'B소재 LOT', type: 'text' },
       { key: 'lot_c', label: 'C소재 LOT', type: 'text' },
@@ -149,68 +149,40 @@ const getFormType = (process) => {
 
 // --- Components ---
 
-// Barcode Scanner Modal (CDN Load - 에러 방지용)
-const BarcodeScannerModal = ({ onClose, onScan }) => {
-  const [libLoaded, setLibLoaded] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const scannerRef = useRef(null);
+// Image Compression Helper
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800; // 최대 너비 제한 (용량 감소)
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
 
-  useEffect(() => {
-    // 이미 로드되어 있으면 바로 사용
-    if (window.Html5QrcodeScanner) {
-      setLibLoaded(true);
-      return;
-    }
-    // CDN 스크립트 동적 로드
-    const script = document.createElement('script');
-    script.src = "https://unpkg.com/html5-qrcode";
-    script.async = true;
-    script.onload = () => setLibLoaded(true);
-    script.onerror = () => setErrorMsg('바코드 라이브러리 로드 실패. 인터넷 연결을 확인하세요.');
-    document.body.appendChild(script);
-  }, []);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  useEffect(() => {
-    if (libLoaded && !scannerRef.current) {
-      try {
-        const scanner = new window.Html5QrcodeScanner(
-          "reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false
-        );
-        scannerRef.current = scanner;
-        scanner.render((decodedText) => {
-          onScan(decodedText);
-          scanner.clear().catch(console.error);
-          onClose();
-        }, (error) => {
-          // ignore scan errors
-        });
-      } catch (err) {
-        console.error(err);
-        setErrorMsg("카메라 초기화 실패. 권한을 허용해주세요.");
-      }
-    }
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
-        scannerRef.current = null;
-      }
+        // JPEG 포맷, 품질 0.6으로 압축
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        resolve(dataUrl);
+      };
     };
-  }, [libLoaded, onScan, onClose]);
+  });
+};
 
+const ImageViewerModal = ({ imageUrl, onClose }) => {
+  if (!imageUrl) return null;
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
-      <div className="bg-white rounded-lg p-4 w-full max-w-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-lg">바코드 스캔</h3>
-          <button onClick={onClose}><X size={24} /></button>
-        </div>
-        {!libLoaded && !errorMsg && <p className="text-center p-4">스캐너 로딩 중...</p>}
-        {errorMsg && <p className="text-center text-red-500 p-4">{errorMsg}</p>}
-        <div id="reader" className="w-full"></div>
-        <p className="text-center text-sm text-gray-500 mt-4">바코드를 사각형 안에 맞춰주세요</p>
-      </div>
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+      <img src={imageUrl} alt="확대 이미지" className="max-w-full max-h-full rounded-lg shadow-lg" />
+      <button onClick={onClose} className="absolute top-4 right-4 text-white bg-gray-800 p-2 rounded-full">
+        <X size={24} />
+      </button>
     </div>
   );
 };
@@ -280,8 +252,8 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const template = FORM_TEMPLATES[formType];
   const rowLabels = template.rows(vehicle);
   const [formData, setFormData] = useState({});
-  const [showScanner, setShowScanner] = useState(false);
-  const [scanTarget, setScanTarget] = useState({ row: null, col: null });
+  const fileInputRef = useRef(null);
+  const [activeCell, setActiveCell] = useState({ row: null, col: null });
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
@@ -329,17 +301,29 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     onChange(newData, totalQty, totalDefect);
   };
 
-  const openScanner = (rowLabel, colKey) => {
-    setScanTarget({ row: rowLabel, col: colKey });
-    setShowScanner(true);
+  const handleCameraClick = (rowLabel, colKey) => {
+    setActiveCell({ row: rowLabel, col: colKey });
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
-  const handleScanSuccess = (decodedText) => {
-    if (scanTarget.row && scanTarget.col) {
-      handleCellChange(scanTarget.row, scanTarget.col, decodedText);
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (file && activeCell.row) {
+      try {
+        const compressedDataUrl = await compressImage(file);
+        handleCellChange(activeCell.row, activeCell.col, compressedDataUrl);
+      } catch (err) {
+        console.error("Compression failed", err);
+        alert("이미지 처리 중 오류가 발생했습니다.");
+      }
     }
-    setShowScanner(false);
+    // Reset input
+    e.target.value = '';
   };
+
+  const isImage = (value) => typeof value === 'string' && value.startsWith('data:image');
 
   return (
     <>
@@ -363,40 +347,62 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
                 <td className="border border-black px-2 py-3 font-bold text-center bg-gray-50 text-xs">
                   {rowLabel}
                 </td>
-                {template.columns.map(col => (
-                  <td key={col.key} className="border border-black p-0 h-12 relative group">
-                    <input
-                      type={col.type === 'number' ? 'number' : 'text'}
-                      min={col.type === 'number' ? "0" : undefined}
-                      value={formData[rowLabel]?.[col.key] || ''}
-                      className={`w-full h-full text-center outline-none bg-transparent text-base
-                        ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
-                      `}
-                      onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
-                    />
-                    {/* isBarcode가 true인 컬럼(FMB LOT)에만 스캔 아이콘 표시 */}
-                    {col.isBarcode && (
-                      <button 
-                        onClick={() => openScanner(rowLabel, col.key)}
-                        className="absolute right-0 top-0 h-full px-2 text-gray-400 hover:text-blue-600 opacity-50 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm"
-                        title="바코드 스캔"
-                      >
-                        <Scan size={16} />
-                      </button>
-                    )}
-                  </td>
-                ))}
+                {template.columns.map(col => {
+                  const cellValue = formData[rowLabel]?.[col.key] || '';
+                  const hasImage = isImage(cellValue);
+                  
+                  return (
+                    <td key={col.key} className="border border-black p-0 h-12 relative group bg-white">
+                      {hasImage ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <button 
+                            onClick={() => handleCellChange(rowLabel, col.key, '')} // Clear image
+                            className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1 hover:bg-red-100 hover:text-red-600"
+                            title="클릭하여 삭제"
+                          >
+                            <Camera size={14} /> 
+                            <span>사진 등록됨</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type={col.type === 'number' ? 'number' : 'text'}
+                          min={col.type === 'number' ? "0" : undefined}
+                          value={cellValue}
+                          className={`w-full h-full text-center outline-none bg-transparent text-base
+                            ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
+                          `}
+                          onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
+                        />
+                      )}
+                      
+                      {/* FMB LOT 컬럼(isPhoto: true)에만 카메라 아이콘 표시 */}
+                      {col.isPhoto && !hasImage && (
+                        <button 
+                          onClick={() => handleCameraClick(rowLabel, col.key)}
+                          className="absolute right-0 top-0 h-full px-2 text-gray-400 hover:text-blue-600 opacity-50 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm"
+                          title="사진 촬영"
+                        >
+                          <Camera size={18} />
+                        </button>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {showScanner && (
-        <BarcodeScannerModal 
-          onClose={() => setShowScanner(false)} 
-          onScan={handleScanSuccess} 
-        />
-      )}
+      {/* Hidden File Input for Camera */}
+      <input 
+        type="file" 
+        accept="image/*" 
+        capture="environment" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        className="hidden" 
+      />
     </>
   );
 };
@@ -794,6 +800,7 @@ const AdminDashboard = ({ db, appId }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingLog, setEditingLog] = useState(null);
+  const [viewImage, setViewImage] = useState(null);
 
   useEffect(() => {
     const q = query(collection(db, 'work_logs'), orderBy('timestamp', 'desc'));
@@ -854,7 +861,9 @@ const AdminDashboard = ({ db, appId }) => {
           return row.measurements?.[k]?.[x] || '';
         }
         const [r, c] = h.split(/_(.+)/);
-        return row.details?.[r]?.[c] || '';
+        const cellData = row.details?.[r]?.[c] || '';
+        // 이미지는 CSV에 텍스트로 표시
+        return cellData.startsWith('data:image') ? 'IMAGE' : cellData;
       });
       csvRows.push([...vals, ...details].join(','));
     });
@@ -887,6 +896,16 @@ const AdminDashboard = ({ db, appId }) => {
           <div className="mt-2 pt-2 border-t border-gray-200">
             <span className="font-bold text-blue-600 block mb-1">치수 검사 데이터 있음</span>
           </div>
+        )}
+        {/* 이미지 데이터 확인용 */}
+        {Object.values(log.details).some(row => Object.values(row).some(v => typeof v === 'string' && v.startsWith('data:image'))) && (
+           <div className="mt-2 pt-2 border-t border-gray-200 text-purple-600 font-bold flex items-center gap-1 cursor-pointer" onClick={() => {
+              // 간단히 첫번째 이미지를 보여주는 로직 (개선 가능)
+              const firstImg = Object.values(log.details).flatMap(row => Object.values(row)).find(v => typeof v === 'string' && v.startsWith('data:image'));
+              if(firstImg) setViewImage(firstImg);
+           }}>
+             <ImageIcon size={14} /> FMB LOT 사진 있음
+           </div>
         )}
       </div>
     );
@@ -968,6 +987,13 @@ const AdminDashboard = ({ db, appId }) => {
           log={editingLog} 
           onClose={() => setEditingLog(null)} 
           onUpdate={handleUpdate} 
+        />
+      )}
+      
+      {viewImage && (
+        <ImageViewerModal 
+          imageUrl={viewImage} 
+          onClose={() => setViewImage(null)} 
         />
       )}
     </div>
