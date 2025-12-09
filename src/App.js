@@ -8,18 +8,18 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Menu
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
+// [중요] 여기에 본인의 Firebase 키값을 붙여넣으세요.
 const firebaseConfig = {
-  apiKey: "AIzaSyDOgzHZvBtzuCayxuEB9hMPJ4BBlvhvHtw",
-  authDomain: "mes-worklog-system.firebaseapp.com",
-  projectId: "mes-worklog-system",
-  storageBucket: "mes-worklog-system.firebasestorage.app",
-  messagingSenderId: "662704876600",
-  appId: "1:662704876600:web:1a92d6e8d5c4cd99a7cacd",
-  measurementId: "G-8XRXFQ7HV4"
+  apiKey: "API_KEY_를_입력하세요",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  projectId: "PROJECT_ID",
+  storageBucket: "PROJECT_ID.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
 };
 
 // Initialize Firebase
@@ -34,7 +34,6 @@ const appId = 'mes-production-v1';
 const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
 const PROCESS_TYPES = ['소재준비', '프레스', '후가공', '검사'];
 
-// 시간/분 리스트 생성
 const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
@@ -78,7 +77,7 @@ const INSPECTION_SPECS = {
   ]
 };
 
-// --- Form Templates (바코드 설정 제거됨) ---
+// --- Form Templates ---
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -171,38 +170,38 @@ const LoginScreen = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
+      <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full border border-slate-300">
         <div className="flex justify-center mb-6">
-          <div className="bg-blue-700 p-3 rounded-lg">
+          <div className="bg-blue-700 p-4 rounded-2xl shadow-lg">
             <ClipboardList className="w-10 h-10 text-white" />
           </div>
         </div>
         <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
         <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 넣고 로그인을 눌러주세요</p>
-        <div className="flex bg-slate-100 p-1 rounded mb-6 border border-slate-200">
-          <button type="button" onClick={() => { setRole('worker'); setError(''); }} className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${role === 'worker' ? 'bg-white text-blue-700 shadow border border-slate-200' : 'text-slate-500'}`}>작업자</button>
-          <button type="button" onClick={() => { setRole('admin'); setError(''); }} className={`flex-1 py-2 px-4 rounded text-sm font-bold transition ${role === 'admin' ? 'bg-white text-indigo-700 shadow border border-slate-200' : 'text-slate-500'}`}>관리자</button>
+        <div className="flex bg-slate-100 p-1 rounded-lg mb-6 border border-slate-200">
+          <button type="button" onClick={() => { setRole('worker'); setError(''); }} className={`flex-1 py-3 px-4 rounded-md text-sm font-bold transition ${role === 'worker' ? 'bg-white text-blue-700 shadow-sm border border-slate-200' : 'text-slate-500'}`}>작업자</button>
+          <button type="button" onClick={() => { setRole('admin'); setError(''); }} className={`flex-1 py-3 px-4 rounded-md text-sm font-bold transition ${role === 'admin' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500'}`}>관리자</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {role === 'worker' ? (
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label>
-              <input type="text" required className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="성명 입력" value={name} onChange={(e) => setName(e.target.value)} />
+              <input type="text" required className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-base" placeholder="성명 입력" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
           ) : (
             <>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label>
-                <input type="text" required className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="admin" value={adminId} onChange={(e) => setAdminId(e.target.value)} />
+                <input type="text" required className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-base" placeholder="admin" value={adminId} onChange={(e) => setAdminId(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Password</label>
-                <input type="password" required className="w-full px-4 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="****" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input type="password" required className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-base" placeholder="****" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             </>
           )}
-          {error && <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded border border-red-100 flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</div>}
-          <button type="submit" className={`w-full font-bold py-3 rounded mt-2 shadow transition text-white text-sm ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>로그인</button>
+          {error && <div className="text-red-500 text-xs text-center bg-red-50 py-2 rounded-lg border border-red-100 flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</div>}
+          <button type="submit" className={`w-full font-bold py-4 rounded-xl mt-2 shadow-lg transition text-white text-base ${role === 'worker' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>로그인</button>
         </form>
       </div>
     </div>
@@ -262,13 +261,13 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   };
 
   return (
-    <div className="overflow-x-auto border border-black bg-white">
+    <div className="overflow-x-auto border border-black bg-white shadow-sm">
       <table className="w-full text-sm border-collapse min-w-[800px]">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border border-black px-2 py-2 text-center w-24 font-bold text-gray-800">구분</th>
+            <th className="border border-black px-2 py-3 text-center w-24 font-bold text-gray-800">구분</th>
             {template.columns.map(col => (
-              <th key={col.key} className={`border border-black px-1 py-2 text-center font-bold text-xs whitespace-nowrap
+              <th key={col.key} className={`border border-black px-1 py-3 text-center font-bold text-xs whitespace-nowrap
                 ${col.isDefect ? 'text-red-700' : 'text-gray-800'}
               `}>
                 {col.label}
@@ -279,16 +278,16 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
         <tbody>
           {rowLabels.map((rowLabel) => (
             <tr key={rowLabel}>
-              <td className="border border-black px-2 py-1 font-bold text-center bg-gray-50 text-xs">
+              <td className="border border-black px-2 py-3 font-bold text-center bg-gray-50 text-xs">
                 {rowLabel}
               </td>
               {template.columns.map(col => (
-                <td key={col.key} className="border border-black p-0 h-8 relative group">
+                <td key={col.key} className="border border-black p-0 h-12 relative group">
                   <input
                     type={col.type === 'number' ? 'number' : 'text'}
                     min={col.type === 'number' ? "0" : undefined}
                     value={formData[rowLabel]?.[col.key] || ''}
-                    className={`w-full h-full text-center outline-none bg-transparent text-sm
+                    className={`w-full h-full text-center outline-none bg-transparent text-base
                       ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}
                     `}
                     onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)}
@@ -322,44 +321,46 @@ const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
   if (specs.length === 0) return null;
 
   return (
-    <div className="mt-6 border border-black bg-white">
-      <div className="bg-gray-800 text-white px-4 py-2 border-b border-black font-bold text-sm flex items-center gap-2">
+    <div className="mt-6 border border-black bg-white shadow-sm">
+      <div className="bg-gray-800 text-white px-4 py-3 border-b border-black font-bold text-sm flex items-center gap-2">
         <Ruler size={16} />
         중요 치수(길이) 검사현황 ({vehicle})
       </div>
-      <table className="w-full text-sm border-collapse min-w-[600px]">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-black px-2 py-2 text-center font-bold">구분</th>
-            <th className="border border-black px-2 py-2 text-center font-bold">규격 (SPEC)</th>
-            {['x1', 'x2', 'x3', 'x4', 'x5'].map(x => (
-              <th key={x} className="border border-black px-2 py-2 text-center font-bold w-16">{x}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {specs.map((item) => (
-            <tr key={item.part}>
-              <td className="border border-black px-2 py-1 text-center font-bold bg-gray-50 text-xs">
-                {item.part}
-              </td>
-              <td className="border border-black px-2 py-1 text-center font-medium">
-                {item.spec}
-              </td>
-              {['x1', 'x2', 'x3', 'x4', 'x5'].map((x) => (
-                <td key={x} className="border border-black p-0 h-8">
-                  <input
-                    type="text"
-                    value={measureData[item.part]?.[x] || ''}
-                    className="w-full h-full text-center outline-none bg-transparent"
-                    onChange={(e) => handleMeasureChange(item.part, x, e.target.value)}
-                  />
-                </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse min-w-[600px]">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-black px-2 py-3 text-center font-bold">구분</th>
+              <th className="border border-black px-2 py-3 text-center font-bold">규격 (SPEC)</th>
+              {['x1', 'x2', 'x3', 'x4', 'x5'].map(x => (
+                <th key={x} className="border border-black px-2 py-3 text-center font-bold w-16">{x}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {specs.map((item) => (
+              <tr key={item.part}>
+                <td className="border border-black px-2 py-3 text-center font-bold bg-gray-50 text-xs">
+                  {item.part}
+                </td>
+                <td className="border border-black px-2 py-3 text-center font-medium">
+                  {item.spec}
+                </td>
+                {['x1', 'x2', 'x3', 'x4', 'x5'].map((x) => (
+                  <td key={x} className="border border-black p-0 h-12">
+                    <input
+                      type="text"
+                      value={measureData[item.part]?.[x] || ''}
+                      className="w-full h-full text-center outline-none bg-transparent text-base"
+                      onChange={(e) => handleMeasureChange(item.part, x, e.target.value)}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
@@ -398,21 +399,21 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-lg">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 md:p-4 overflow-y-auto">
+      <div className="bg-white md:rounded-lg shadow-2xl w-full max-w-4xl h-full md:max-h-[90vh] overflow-y-auto flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b bg-gray-50 md:rounded-t-lg sticky top-0 z-20">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Pencil size={18} className="text-blue-600" />
-            작업일보 수정 ({log.vehicleModel} / {log.processType})
+            작업일보 수정
           </h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition">
+          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition">
             <X size={24} className="text-gray-500" />
           </button>
         </div>
         
-        <div className="p-6 space-y-6">
+        <div className="p-4 md:p-6 space-y-6">
           <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm text-yellow-800">
-            ⚠ 주의: 차종과 공정은 변경할 수 없습니다. 수치와 내용만 수정하세요.
+            {log.vehicleModel} / {log.processType}
           </div>
 
           <DynamicTableForm 
@@ -441,16 +442,16 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
           </div>
         </div>
 
-        <div className="p-4 border-t bg-gray-50 rounded-b-lg flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded transition">
+        <div className="p-4 border-t bg-gray-50 md:rounded-b-lg flex justify-end gap-3 sticky bottom-0 z-20">
+          <button onClick={onClose} className="px-6 py-3 md:py-2 text-gray-600 font-medium hover:bg-gray-200 rounded transition bg-white border border-gray-300">
             취소
           </button>
           <button 
             onClick={handleSave}
             disabled={isSubmitting}
-            className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition flex items-center gap-2"
+            className="px-8 py-3 md:py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition flex items-center gap-2"
           >
-            {isSubmitting ? '저장 중...' : <><Save size={18} /> 수정 완료</>}
+            {isSubmitting ? '저장 중...' : <><Save size={18} /> 저장</>}
           </button>
         </div>
       </div>
@@ -485,7 +486,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
     e.preventDefault();
     if (!vehicle || !processType) return;
     
-    // 작업 시간 포맷팅 (08:30 ~ 종료시간)
     const workTime = `08:30 ~ ${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
 
     setIsSubmitting(true);
@@ -501,7 +501,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
         productionQty: totalQty,
         defectQty: totalDefect,
         notes: notes,
-        workTime: workTime, // 작업 시간 저장
+        workTime: workTime,
         timestamp: serverTimestamp(),
       });
       
@@ -520,113 +520,113 @@ const WorkerDashboard = ({ user, db, appId }) => {
   };
 
   return (
-    <div className="max-w-[210mm] mx-auto my-8 bg-white shadow-2xl min-h-[297mm] relative text-black print:shadow-none print:m-0">
-      <div className="p-8 pb-4">
-        <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-          <h1 className="text-3xl font-extrabold tracking-widest text-black flex items-center gap-3">
-            <FileText className="w-8 h-8" />
+    <div className="w-full md:max-w-[210mm] mx-auto my-0 md:my-8 bg-white shadow-none md:shadow-2xl min-h-screen md:min-h-[297mm] relative text-black print:shadow-none print:m-0">
+      <div className="p-4 md:p-8 pb-20 md:pb-4">
+        {/* Header - Responsive Layout */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-black pb-2 mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-widest text-black flex items-center gap-3">
+            <FileText className="w-6 h-6 md:w-8 md:h-8" />
             작 업 일 보
           </h1>
-          <div className="text-right">
-            <p className="text-xs font-bold text-gray-600 mb-1">결 재</p>
-            <div className="flex border border-black">
-              <div className="w-16 border-r border-black">
+          <div className="text-right w-full md:w-auto">
+            <p className="text-xs font-bold text-gray-600 mb-1 hidden md:block">결 재</p>
+            <div className="flex border border-black w-full md:w-auto">
+              <div className="flex-1 md:w-16 border-r border-black">
                 <div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">작 성</div>
-                <div className="h-12 flex items-center justify-center text-sm font-bold">{user.name}</div>
+                <div className="h-10 md:h-12 flex items-center justify-center text-sm font-bold">{user.name}</div>
               </div>
-              <div className="w-16 border-r border-black">
+              <div className="flex-1 md:w-16 border-r border-black">
                 <div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">검 토</div>
-                <div className="h-12"></div>
+                <div className="h-10 md:h-12"></div>
               </div>
-              <div className="w-16">
+              <div className="flex-1 md:w-16">
                 <div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">승 인</div>
-                <div className="h-12"></div>
+                <div className="h-10 md:h-12"></div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Info Grid - Stacked on Mobile */}
         <div className="border border-black mb-6">
-          <div className="flex border-b border-black">
-            <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
-              작업일자
+          <div className="flex flex-col md:flex-row border-b border-black">
+            <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r">
+               <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">작업일자</div>
+               <div className="flex-1 flex items-center justify-center font-medium text-sm">{new Date().toLocaleDateString()}</div>
             </div>
-            <div className="flex-1 flex items-center px-3 text-sm font-medium">
-              {new Date().toLocaleDateString()}
-            </div>
-            <div className="w-24 bg-gray-100 border-l border-r border-black flex items-center justify-center font-bold text-sm py-2">
-              작업자
-            </div>
-            <div className="flex-1 flex items-center px-3 text-sm font-medium">
-              {user.name}
-            </div>
-            <div className="w-24 bg-gray-100 border-l border-r border-black flex items-center justify-center font-bold text-sm py-2">
-              작업시간
-            </div>
-            <div className="flex-1 flex items-center justify-center px-2 text-sm font-medium bg-blue-50/50">
-              {/* 작업 시간 선택 UI */}
-              <div className="flex items-center gap-1">
-                <span className="font-bold text-gray-700">08:30</span>
-                <span className="text-gray-400">~</span>
-                <select 
-                  value={endHour} 
-                  onChange={(e) => setEndHour(e.target.value)}
-                  className="bg-transparent font-bold text-blue-900 outline-none text-center appearance-none cursor-pointer border-b border-blue-200 hover:border-blue-500"
-                >
-                  {HOURS.map(h => <option key={h} value={h}>{h.toString().padStart(2, '0')}</option>)}
-                </select>
-                <span>:</span>
-                <select 
-                  value={endMinute} 
-                  onChange={(e) => setEndMinute(e.target.value)}
-                  className="bg-transparent font-bold text-blue-900 outline-none text-center appearance-none cursor-pointer border-b border-blue-200 hover:border-blue-500"
-                >
-                  {MINUTES.map(m => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
-                </select>
-                <Clock size={14} className="text-gray-400 ml-1" />
-              </div>
+            <div className="flex flex-1">
+               <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">작업자</div>
+               <div className="flex-1 flex items-center justify-center font-medium text-sm">{user.name}</div>
             </div>
           </div>
-          <div className="flex">
-            <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
-              차종
+
+          <div className="flex flex-col md:flex-row border-b border-black">
+             <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r">
+                <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">작업시간</div>
+                <div className="flex-1 flex items-center justify-center py-2 px-2 bg-blue-50/50">
+                   <div className="flex items-center gap-1 text-sm">
+                      <span className="font-bold text-gray-700">08:30</span>
+                      <span className="text-gray-400">~</span>
+                      <select 
+                        value={endHour} 
+                        onChange={(e) => setEndHour(e.target.value)}
+                        className="bg-transparent font-bold text-blue-900 outline-none text-center appearance-none cursor-pointer border-b border-blue-200 py-1"
+                      >
+                        {HOURS.map(h => <option key={h} value={h}>{h.toString().padStart(2, '0')}</option>)}
+                      </select>
+                      <span>:</span>
+                      <select 
+                        value={endMinute} 
+                        onChange={(e) => setEndMinute(e.target.value)}
+                        className="bg-transparent font-bold text-blue-900 outline-none text-center appearance-none cursor-pointer border-b border-blue-200 py-1"
+                      >
+                        {MINUTES.map(m => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
+                      </select>
+                   </div>
+                </div>
+             </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row">
+            <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r h-12">
+              <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm">차종</div>
+              <div className="flex-1 relative">
+                <select
+                  value={vehicle}
+                  onChange={(e) => setVehicle(e.target.value)}
+                  className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer"
+                >
+                  <option value="">[ 선택 ]</option>
+                  {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <Truck className="absolute right-2 top-4 text-gray-400 pointer-events-none w-4 h-4" />
+              </div>
             </div>
-            <div className="flex-1 border-r border-black relative">
-              <select
-                value={vehicle}
-                onChange={(e) => setVehicle(e.target.value)}
-                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer hover:bg-blue-50"
-              >
-                <option value="">[ 선 택 ]</option>
-                {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <Truck className="absolute right-2 top-3 text-gray-400 pointer-events-none w-4 h-4" />
-            </div>
-            <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">
-              공정
-            </div>
-            <div className="flex-1 relative">
-              <select
-                value={processType}
-                onChange={(e) => setProcessType(e.target.value)}
-                className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer hover:bg-blue-50"
-              >
-                <option value="">[ 선 택 ]</option>
-                {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <Factory className="absolute right-2 top-3 text-gray-400 pointer-events-none w-4 h-4" />
+            <div className="flex flex-1 h-12">
+              <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm">공정</div>
+              <div className="flex-1 relative">
+                <select
+                  value={processType}
+                  onChange={(e) => setProcessType(e.target.value)}
+                  className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer"
+                >
+                  <option value="">[ 선택 ]</option>
+                  {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <Factory className="absolute right-2 top-4 text-gray-400 pointer-events-none w-4 h-4" />
+              </div>
             </div>
           </div>
         </div>
 
         {vehicle && processType ? (
           <div className="space-y-6">
-            <div className="flex justify-between items-center bg-gray-800 text-white px-4 py-2 border border-black">
+            <div className="flex justify-between items-center bg-gray-800 text-white px-4 py-3 border border-black">
               <span className="font-bold text-sm flex items-center gap-2">
                 <ClipboardList size={16} />
                 {logTitle}
               </span>
-              <div className="text-xs space-x-4 font-mono">
+              <div className="text-xs space-x-3 font-mono flex">
                 <span>합격: {totalQty.toLocaleString()}</span>
                 <span className="text-red-300">불량: {totalDefect.toLocaleString()}</span>
               </div>
@@ -643,29 +643,30 @@ const WorkerDashboard = ({ user, db, appId }) => {
             )}
 
             <div className="border border-black">
-              <div className="bg-gray-100 border-b border-black px-3 py-1 font-bold text-xs text-gray-700">
+              <div className="bg-gray-100 border-b border-black px-3 py-2 font-bold text-xs text-gray-700">
                 특이사항 및 인수인계
               </div>
               <textarea
                 rows="4"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full p-3 text-sm outline-none resize-none"
+                className="w-full p-3 text-base outline-none resize-none"
                 placeholder="내용을 입력하세요."
               ></textarea>
             </div>
 
-            <div className="flex justify-end pt-4">
+            {/* Mobile Fixed Bottom Button */}
+            <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t border-gray-300 md:static md:p-0 md:bg-transparent md:border-0 md:flex md:justify-end md:pt-4 z-40">
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className={`px-8 py-3 font-bold text-white shadow-lg flex items-center gap-2 border border-black transition active:translate-y-1
+                className={`w-full md:w-auto px-8 py-4 md:py-3 font-bold text-white shadow-lg flex items-center justify-center gap-2 border border-black transition active:translate-y-1 rounded-lg md:rounded-none
                   ${isSubmitting ? 'bg-gray-400' : 'bg-blue-800 hover:bg-blue-900'}
                 `}
               >
                 {isSubmitting ? '저장 중...' : (
                   <>
-                    <Save size={18} />
+                    <Save size={20} />
                     일보 저장
                   </>
                 )}
@@ -673,7 +674,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
             </div>
           </div>
         ) : (
-          <div className="h-64 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
+          <div className="h-64 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 bg-gray-50 rounded-lg">
             <FileText className="w-12 h-12 mb-2 opacity-20" />
             <p className="text-sm">상단에서 차종과 공정을 선택하면<br/>입력 양식이 표시됩니다.</p>
           </div>
@@ -725,7 +726,7 @@ const AdminDashboard = ({ db, appId }) => {
   const exportToCSV = (data) => {
     if (!data || data.length === 0) return alert("데이터가 없습니다.");
     
-    // CSV Export Logic (Same as before)
+    // CSV Export Logic
     const allDetailKeys = new Set();
     data.forEach(row => {
       if (row.details) Object.keys(row.details).forEach(rowKey => Object.keys(row.details[rowKey]).forEach(colKey => allDetailKeys.add(`${rowKey}_${colKey}`)));
@@ -743,7 +744,7 @@ const AdminDashboard = ({ db, appId }) => {
         `"${row.vehicleModel}"`,
         `"${row.processType}"`,
         `"${row.logTitle}"`,
-        `"${row.workTime || ''}"`, // 작업 시간 추가
+        `"${row.workTime || ''}"`,
         row.productionQty || 0,
         row.defectQty || 0,
         `"${row.notes || ''}"`
@@ -794,32 +795,32 @@ const AdminDashboard = ({ db, appId }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 border border-gray-300 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-        <div>
+      <div className="bg-white p-4 md:p-6 border-b md:border border-gray-300 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="w-full md:w-auto">
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Settings className="w-5 h-5" />
             관리자 모드
           </h2>
           <p className="text-gray-500 text-xs mt-1">데이터 조회 및 엑셀 다운로드</p>
         </div>
-        <button onClick={() => exportToCSV(logs)} className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 font-bold text-sm shadow transition rounded">
+        <button onClick={() => exportToCSV(logs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded">
           <FileSpreadsheet size={16} /> Excel 다운로드
         </button>
       </div>
 
-      <div className="bg-white border border-gray-300 shadow-sm overflow-hidden">
+      <div className="bg-white border-t md:border border-gray-300 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left text-gray-700">
             <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-300">
               <tr>
-                <th className="px-4 py-3 border-r">일시</th>
-                <th className="px-4 py-3 border-r">작업자</th>
-                <th className="px-4 py-3 border-r">내역</th>
-                <th className="px-4 py-3 border-r">작업시간</th>
-                <th className="px-4 py-3 border-r w-48">상세 수량</th>
-                <th className="px-4 py-3 border-r text-right text-red-600">불량</th>
-                <th className="px-4 py-3 border-r">특이사항</th>
-                <th className="px-4 py-3 text-center">관리</th>
+                <th className="px-4 py-3 border-r whitespace-nowrap">일시</th>
+                <th className="px-4 py-3 border-r whitespace-nowrap">작업자</th>
+                <th className="px-4 py-3 border-r whitespace-nowrap">내역</th>
+                <th className="px-4 py-3 border-r whitespace-nowrap">작업시간</th>
+                <th className="px-4 py-3 border-r min-w-[150px]">상세 수량</th>
+                <th className="px-4 py-3 border-r text-right text-red-600 whitespace-nowrap">불량</th>
+                <th className="px-4 py-3 border-r min-w-[150px]">특이사항</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">관리</th>
               </tr>
             </thead>
             <tbody>
@@ -833,7 +834,7 @@ const AdminDashboard = ({ db, appId }) => {
                     <td className="px-4 py-3 border-r align-top whitespace-nowrap">
                       {log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000).toLocaleDateString() : '-'}
                     </td>
-                    <td className="px-4 py-3 border-r font-bold align-top">{log.workerName}</td>
+                    <td className="px-4 py-3 border-r font-bold align-top whitespace-nowrap">{log.workerName}</td>
                     <td className="px-4 py-3 border-r align-top">
                       <span className="font-bold text-blue-800">[{log.vehicleModel}]</span> {log.logTitle}
                     </td>
@@ -847,10 +848,10 @@ const AdminDashboard = ({ db, appId }) => {
                     <td className="px-4 py-3 border-r align-top max-w-xs truncate text-gray-500">{log.notes}</td>
                     <td className="px-4 py-3 align-top text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => setEditingLog(log)} className="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition" title="수정">
+                        <button onClick={() => setEditingLog(log)} className="text-blue-500 hover:text-blue-700 p-2 rounded hover:bg-blue-50 transition" title="수정">
                           <Pencil size={18} />
                         </button>
-                        <button onClick={() => handleDelete(log.id)} className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition" title="삭제">
+                        <button onClick={() => handleDelete(log.id)} className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50 transition" title="삭제">
                           <Trash2 size={18} />
                         </button>
                       </div>
@@ -907,21 +908,25 @@ export default function App() {
         <LoginScreen onLogin={handleLogin} />
       ) : (
         <div className="flex flex-col min-h-screen">
-          <header className="bg-gray-800 text-white sticky top-0 z-30 shadow h-12 flex items-center justify-between px-4 print:hidden">
+          <header className="bg-gray-800 text-white sticky top-0 z-30 shadow h-14 md:h-12 flex items-center justify-between px-4 print:hidden">
             <div className="flex items-center gap-2">
-              <Factory size={16} className="text-blue-400" />
-              <span className="font-bold text-sm tracking-wide">MES SYSTEM</span>
+              <Factory size={18} className="text-blue-400" />
+              <span className="font-bold text-base md:text-sm tracking-wide">MES SYSTEM</span>
             </div>
             <div className="flex items-center gap-4 text-xs">
-              <span className="text-gray-300">
+              <span className="text-gray-300 hidden md:inline">
                 {currentUser.name} ({currentUser.role === 'admin' ? '관리자' : '작업자'})
               </span>
-              <button onClick={handleLogout} className="text-gray-400 hover:text-white transition">
-                로그아웃
+              <button 
+                onClick={handleLogout} 
+                className="text-gray-400 hover:text-white transition flex items-center gap-1"
+              >
+                <LogOut size={16} />
+                <span className="hidden md:inline">로그아웃</span>
               </button>
             </div>
           </header>
-          <main className="flex-1 w-full p-4 print:p-0">
+          <main className="flex-1 w-full p-0 md:p-4 print:p-0">
             {currentUser.role === 'admin' ? (
               <div className="max-w-7xl mx-auto">
                 <AdminDashboard db={db} appId={appId} />
