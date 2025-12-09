@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -58,7 +58,7 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- 작업 표준서 데이터 ---
+// --- [수정] 작업 표준서 데이터 (요청하신 내용 적용) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -68,7 +68,7 @@ const PROCESS_STANDARDS = {
       "/images/DN8_RR_SO_R.jpeg",
       "/images/DN8_RR_SO_S.jpeg",
       "/images/DN8_RR_SO_C.jpeg",
-      "/imgaes/DN8_RR_SO_D.jpeg",
+      "/images/DN8_RR_SO_D.jpeg", // 오타 수정 (imgaes -> images)
     ],
     '프레스': [
       "/images/DN8_FRT_P.jpeg",
@@ -257,7 +257,7 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// Standard Operation Procedure Modal (Dynamic Image List)
+// Standard Operation Procedure Modal
 const StandardModal = ({ vehicle, process, onClose }) => {
   const standardImages = PROCESS_STANDARDS[vehicle]?.[process] || [];
 
@@ -267,7 +267,7 @@ const StandardModal = ({ vehicle, process, onClose }) => {
         <div className="flex justify-between items-center p-4 border-b">
           <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
             <BookOpen className="text-blue-600" />
-            작업 표준서 ({vehicle} / {process})
+            작업 표준서 ({vehicle} - {process})
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
         </div>
@@ -278,7 +278,15 @@ const StandardModal = ({ vehicle, process, onClose }) => {
               {standardImages.map((imgUrl, idx) => (
                 <div key={idx} className="bg-white p-2 rounded shadow-md border border-slate-200">
                   <div className="text-sm font-bold text-gray-500 mb-2 px-2">Page {idx + 1}</div>
-                  <img src={imgUrl} alt={`Standard ${idx + 1}`} className="w-full h-auto rounded" />
+                  <img 
+                    src={imgUrl} 
+                    alt={`Standard ${idx + 1}`} 
+                    className="w-full h-auto rounded" 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400/eee/999?text=Image+Not+Found";
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -286,7 +294,7 @@ const StandardModal = ({ vehicle, process, onClose }) => {
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <BookOpen size={48} className="mb-2 opacity-20" />
               <p>등록된 표준서 이미지가 없습니다.</p>
-              <p className="text-xs mt-2 text-gray-400">({vehicle} - {process})</p>
+              <p className="text-xs mt-2 text-gray-400">public/images 폴더에 파일을 넣어주세요.</p>
             </div>
           )}
         </div>
@@ -299,10 +307,7 @@ const StandardModal = ({ vehicle, process, onClose }) => {
   );
 };
 
-// [수정됨] 차트 컴포넌트 (데이터 기반 동적 생성)
 const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
-  if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-gray-400 text-sm">데이터 없음</div>;
-
   const maxVal = Math.max(...data.map(d => d.value), 1);
   return (
     <div className="flex items-end h-32 gap-2 mt-4">
@@ -323,7 +328,6 @@ const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
 };
 
 const DashboardStats = ({ logs }) => {
-  // 1. 프레스 생산량 (부위별)
   const pressProductionData = useMemo(() => {
     const counts = { 'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0 };
     logs.filter(l => l.processType === '프레스').forEach(log => {
@@ -336,7 +340,6 @@ const DashboardStats = ({ logs }) => {
     return Object.entries(counts).map(([k, v]) => ({ label: k, value: v }));
   }, [logs]);
 
-  // 2. 검사 불량수량 (부위별)
   const inspectionDefectData = useMemo(() => {
     const counts = { 'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0 };
     logs.filter(l => l.processType === '검사').forEach(log => {
@@ -366,6 +369,64 @@ const DashboardStats = ({ logs }) => {
         </div>
         <SimpleBarChart data={inspectionDefectData} color="bg-red-500" />
       </div>
+    </div>
+  );
+};
+
+const PressSummaryTable = ({ logs }) => {
+  // 프레스 데이터만 필터링 후 차종별 집계
+  const summaryData = useMemo(() => {
+    const summary = {};
+    
+    // 초기화
+    VEHICLE_MODELS.forEach(model => {
+      summary[model] = { production: 0, defect: 0 };
+    });
+
+    logs.forEach(log => {
+      if (log.processType === '프레스') {
+        if (!summary[log.vehicleModel]) summary[log.vehicleModel] = { production: 0, defect: 0 };
+        summary[log.vehicleModel].production += (log.productionQty || 0);
+        summary[log.vehicleModel].defect += (log.defectQty || 0);
+      }
+    });
+
+    return summary;
+  }, [logs]);
+
+  return (
+    <div className="mt-4 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden animate-fade-in mb-6">
+      <div className="bg-gray-800 text-white px-4 py-3 font-bold flex items-center justify-between">
+        <span>프레스 생산현황 요약 (차종별)</span>
+      </div>
+      <table className="w-full text-sm text-left">
+        <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b">
+          <tr>
+            <th className="px-6 py-3 border-r">차종</th>
+            <th className="px-6 py-3 border-r text-right">총 생산수량</th>
+            <th className="px-6 py-3 text-right text-red-600">총 불량수량</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(summaryData).map(([model, data]) => (
+            (data.production > 0 || data.defect > 0) && (
+              <tr key={model} className="border-b hover:bg-gray-50">
+                <td className="px-6 py-3 font-bold border-r">{model}</td>
+                <td className="px-6 py-3 text-right border-r font-medium">{data.production.toLocaleString()}</td>
+                <td className="px-6 py-3 text-right font-bold text-red-600">{data.defect.toLocaleString()}</td>
+              </tr>
+            )
+          ))}
+          {Object.values(summaryData).every(d => d.production === 0 && d.defect === 0) && (
+            <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
+          )}
+           <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
+              <td className="px-6 py-3 border-r text-center">합 계</td>
+              <td className="px-6 py-3 text-right border-r">{Object.values(summaryData).reduce((a,b)=>a+b.production,0).toLocaleString()}</td>
+              <td className="px-6 py-3 text-right text-red-600">{Object.values(summaryData).reduce((a,b)=>a+b.defect,0).toLocaleString()}</td>
+           </tr>
+        </tbody>
+      </table>
     </div>
   );
 };
@@ -1107,6 +1168,7 @@ const AdminDashboard = ({ db, appId }) => {
   const [filterVehicle, setFilterVehicle] = useState('All');
   const [filterProcess, setFilterProcess] = useState('All');
   const [filterWorker, setFilterWorker] = useState('All');
+  const [showPressSummary, setShowPressSummary] = useState(false); // Toggle for summary view
 
   useEffect(() => {
     const [year, month] = filterDate.split('-');
@@ -1143,6 +1205,26 @@ const AdminDashboard = ({ db, appId }) => {
   const uniqueWorkers = useMemo(() => {
     return ['All', ...new Set(logs.map(log => log.workerName))].sort();
   }, [logs]);
+
+  // Press Summary Data Logic
+  const pressSummary = useMemo(() => {
+    const summary = {};
+    // Initialize
+    VEHICLE_MODELS.forEach(model => {
+      summary[model] = { production: 0, defect: 0 };
+    });
+
+    logs.forEach(log => {
+      if (log.processType === '프레스') {
+        if (!summary[log.vehicleModel]) summary[log.vehicleModel] = { production: 0, defect: 0 };
+        summary[log.vehicleModel].production += (log.productionQty || 0);
+        summary[log.vehicleModel].defect += (log.defectQty || 0);
+      }
+    });
+
+    return summary;
+  }, [logs]);
+
 
   const handleDelete = async (id) => {
     if (window.confirm('정말 이 작업일보를 삭제하시겠습니까?')) {
@@ -1321,10 +1403,56 @@ const AdminDashboard = ({ db, appId }) => {
           </select>
         </div>
 
-        <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded">
-          <FileSpreadsheet size={16} /> Excel 다운로드
-        </button>
+        <div className="flex gap-2">
+           <button 
+             onClick={() => setShowPressSummary(!showPressSummary)} 
+             className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded ${showPressSummary ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}
+           >
+             <List size={16} /> 프레스 요약
+           </button>
+           <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded">
+             <FileSpreadsheet size={16} /> Excel 다운로드
+           </button>
+        </div>
       </div>
+      
+      {/* Press Summary Table */}
+      {showPressSummary && (
+        <div className="bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden animate-fade-in mb-6">
+          <div className="bg-slate-800 text-white px-4 py-3 font-bold flex items-center justify-between">
+            <span>프레스 생산현황 요약 (차종별)</span>
+            <span className="text-xs font-normal text-gray-300">* 선택된 월({filterDate}) 기준</span>
+          </div>
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b">
+              <tr>
+                <th className="px-6 py-3 border-r">차종</th>
+                <th className="px-6 py-3 border-r text-right">총 생산수량</th>
+                <th className="px-6 py-3 text-right text-red-600">총 불량수량</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(pressSummary).map(([model, data]) => (
+                (data.production > 0 || data.defect > 0) && (
+                  <tr key={model} className="border-b hover:bg-gray-50">
+                    <td className="px-6 py-3 font-bold border-r">{model}</td>
+                    <td className="px-6 py-3 text-right border-r font-medium">{data.production.toLocaleString()}</td>
+                    <td className="px-6 py-3 text-right font-bold text-red-600">{data.defect.toLocaleString()}</td>
+                  </tr>
+                )
+              ))}
+              {Object.values(pressSummary).every(d => d.production === 0 && d.defect === 0) && (
+                <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
+              )}
+               <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                  <td className="px-6 py-3 border-r text-center">합 계</td>
+                  <td className="px-6 py-3 text-right border-r">{Object.values(pressSummary).reduce((a,b)=>a+b.production,0).toLocaleString()}</td>
+                  <td className="px-6 py-3 text-right text-red-600">{Object.values(pressSummary).reduce((a,b)=>a+b.defect,0).toLocaleString()}</td>
+               </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="bg-white border-t md:border border-gray-300 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
