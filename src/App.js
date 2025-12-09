@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -55,6 +55,67 @@ const getLogTitle = (model, process) => {
       return `검사일보 ${model}`;
     default:
       return `${model} ${process} 일보`;
+  }
+};
+
+// --- [수정] 차종별/공정별 작업표준서 이미지 설정 ---
+// 이미지 주소("https://...") 부분을 실제 사용하시는 이미지 링크로 바꿔주세요.
+const PROCESS_STANDARDS = {
+  'DN8': {
+    '소재준비': [ // 6장
+      "https://drive.google.com/file/d/1Uvn87RCgaE_SC8VJf4ij_Dae_DL6JWMi/view?usp=drive_link",
+      "https://drive.google.com/file/d/1SnwCVW6Ynha5WiYyiXeJ3SuSScmvohTJ/view?usp=drive_link",
+      "https://drive.google.com/file/d/148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F/view?usp=drive_link",
+      "https://drive.google.com/file/d/17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a/view?usp=drive_link",
+      "https://drive.google.com/file/d/1cCxUBXpq2eNZK3Th1vgebIuOL2TH2Ns_/view?usp=drive_link",
+      "https://drive.google.com/file/d/1slk73RU_sHIZGJwar5R7FM-Ni-hOLgzF/view?usp=drive_link",
+      "https://drive.google.com/file/d/1FuFdKIyMCYczr7gVU466h5VMYy9cGtdZ/view?usp=drive_link",
+    ],
+    '프레스': [ // 2장
+      "https://drive.google.com/file/d/1zZ8P__RUohyIGaK0ah7Zqx_dpppqupBX/view?usp=drive_link",
+      "https://drive.google.com/file/d/1J_N4GPeADA6LBq8Zm9_wuJ4sYFdjw8_Q/view?usp=drive_link",
+      "https://drive.google.com/file/d/1vBQ6MKpyGjmH3YXpajnv6Q4wo_6fIX8H/view?usp=drive_link",
+    ],
+    '후가공': [ // 2장
+      "https://drive.google.com/file/d/1R6O7wWFrIXRKwTa9kd5uTNr_0mIKw269/view?usp=drive_link",
+      "https://drive.google.com/file/d/1QecwgaqnlYhhsXzj6LDFJ-mckAJrSdOL/view?usp=drive_link",
+    ],
+    '검사': [ // 2장
+      "https://drive.google.com/file/d/11ne-PUnw0-U03R2itZ2l10IXQ-ghb0Ho/view?usp=drive_link",
+      "https://drive.google.com/file/d/1s1KYFBVRMLkyLaaqg6L5jX46HPkTeCt_/view?usp=drive_link",
+      "https://drive.google.com/file/d/1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW/view?usp=drive_link",
+    ]
+  },
+  'GN7': {
+    '소재준비': ["https://drive.google.com/file/d/1RnIVv4JtntNY78uWGEu24_2Ea-P77wzU/view?usp=drive_link"], // 1장
+    '프레스': ["https://drive.google.com/file/d/1tTlzvgbV1PzG7MdL-wTN-8zQrAuyhYS9/view?usp=drive_link"], // 1장
+    '후가공': ["https://drive.google.com/file/d/15HCYEnb2xeQtioTkesC9ZSrK0NnkYlN3/view?usp=drive_link"], // 1장
+    '검사': ["https://via.placeholder.com/600x800?text=GN7+Inspect+Page+1"], // 1장 (요청엔 없었으나 통일성 위해 추가)
+  },
+  'J100': {
+    '소재준비': [ // 3장
+      "https://drive.google.com/file/d/1qP8w1ASRcIiOaMyxDvxv_pxjaJWSsSeB/view?usp=drive_link",
+      "https://drive.google.com/file/d/1zn6nDa-qbRxP0GqW5Rb0PS6pediHeHxE/view?usp=drive_link",
+      "https://drive.google.com/file/d/1jaOpILpuj1aRwctVfQqJHmOqzuc6_FXz/view?usp=drive_link",
+    ],
+    '프레스': ["https://drive.google.com/file/d/1JvxZetC1mmIsH_0F-WlrvOo0nDGGt64f/view?usp=drive_link"], // 1장
+    '후가공': ["https://drive.google.com/file/d/1-iOTY8MzoBvHX7SItNRvBkWUFX252Ihe/view?usp=drive_link"], // 1장
+    '검사': ["https://drive.google.com/file/d/1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW/view?usp=drive_link"], 
+  },
+  'J120': {
+    '소재준비': ["https://drive.google.com/file/d/1lNczJK5to6dsdu6CLXmTMemW9ykNILTw/view?usp=drive_link"], // 1장
+    '프레스': ["https://drive.google.com/file/d/1nGuRNuA8S6hq8h_GDh5XnqLM5quehn1q/view?usp=drive_link"], // 1장
+    '후가공': ["https://drive.google.com/file/d/19WPnXzCjMuEY8mfOjqHgVvdf8ODTQmsD/view?usp=drive_link"], // 1장
+    '검사': ["https://drive.google.com/file/d/1xdcgA9w_875D5aQpXT8jtZhyL4WP6PgW/view?usp=drive_link"],
+  },
+  'O100': {
+    '소재준비': [
+      "https://drive.google.com/file/d/1CRGj8tBgFMo6YSzP5aaiFI8FsGWE0d1C/view?usp=drive_link",
+      "https://drive.google.com/file/d/1ZHtk9CDEmpKDXb7r4sfUPsXQLyGhnLBS/view?usp=drive_link"
+      ], // 1장 (기본)
+    '프레스': ["https://drive.google.com/file/d/1LkIBIWYm5FPZLEyexq3FcYj5R1qPlvvE/view?usp=drive_link"],
+    '후가공': ["https://drive.google.com/file/d/1ZFMpxYnEh3UJHss5U_eLMY8s_k247k19/view?usp=drive_link"],
+    '검사': ["https://drive.google.com/file/d/1nAlTvIirKIS9AVk1vp5wBpkqpeMaEbbt/view?usp=drive_link"],
   }
 };
 
@@ -149,7 +210,7 @@ const getFormType = (process) => {
 
 // --- Components ---
 
-// Image Compression Helper (용량 최적화)
+// Image Compression Helper
 const compressImage = (file) => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -192,6 +253,110 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
         <button onClick={onClose} className="absolute -top-10 right-0 text-white p-2">
           <X size={32} />
         </button>
+      </div>
+    </div>
+  );
+};
+
+// Standard Operation Procedure Modal (Dynamic Image List)
+const StandardModal = ({ vehicle, process, onClose }) => {
+  // 차량과 공정에 맞는 이미지 목록 가져오기
+  const standardImages = PROCESS_STANDARDS[vehicle]?.[process] || [];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg p-0 max-w-3xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
+            <BookOpen className="text-blue-600" />
+            작업 표준서 ({vehicle} / {process})
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
+          {standardImages.length > 0 ? (
+            <div className="space-y-6">
+              {standardImages.map((imgUrl, idx) => (
+                <div key={idx} className="bg-white p-2 rounded shadow-md border border-slate-200">
+                  <div className="text-sm font-bold text-gray-500 mb-2 px-2">Page {idx + 1}</div>
+                  <img src={imgUrl} alt={`Standard ${idx + 1}`} className="w-full h-auto rounded" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+              <BookOpen size={48} className="mb-2 opacity-20" />
+              <p>등록된 표준서 이미지가 없습니다.</p>
+              <p className="text-xs mt-2 text-gray-400">({vehicle} - {process})</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="p-4 border-t bg-white flex justify-center">
+          <button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-bold shadow">닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  return (
+    <div className="flex items-end h-32 gap-2 mt-4">
+      {data.map((d, idx) => (
+        <div key={idx} className="flex-1 flex flex-col items-center group relative">
+          <div className="absolute bottom-full mb-1 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+            {d.value}
+          </div>
+          <div 
+            className={`w-full max-w-[40px] rounded-t-sm transition-all duration-500 ${color}`} 
+            style={{ height: `${(d.value / maxVal) * 100}%` }}
+          ></div>
+          <div className="text-[10px] text-gray-500 mt-1 truncate w-full text-center">{d.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const DashboardStats = ({ logs }) => {
+  const totalQty = logs.reduce((sum, log) => sum + (log.productionQty || 0), 0);
+  const totalDefect = logs.reduce((sum, log) => sum + (log.defectQty || 0), 0);
+  const defectRate = totalQty > 0 ? ((totalDefect / (totalQty + totalDefect)) * 100).toFixed(1) : 0;
+  
+  const vehicleStats = logs.reduce((acc, log) => {
+    acc[log.vehicleModel] = (acc[log.vehicleModel] || 0) + log.productionQty;
+    return acc;
+  }, {});
+  
+  const chartData = Object.entries(vehicleStats).map(([k, v]) => ({ label: k, value: v }));
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-slate-500 font-bold text-sm">금일 총 생산량</h3>
+          <div className="p-2 bg-blue-50 rounded-full text-blue-600"><Factory size={20} /></div>
+        </div>
+        <div className="text-3xl font-extrabold text-slate-800">{totalQty.toLocaleString()} <span className="text-sm font-normal text-slate-400">EA</span></div>
+      </div>
+
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-slate-500 font-bold text-sm">종합 불량률</h3>
+          <div className="p-2 bg-red-50 rounded-full text-red-600"><AlertCircle size={20} /></div>
+        </div>
+        <div className="text-3xl font-extrabold text-slate-800">{defectRate}% <span className="text-sm font-normal text-slate-400">({totalDefect} EA)</span></div>
+      </div>
+
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-slate-500 font-bold text-sm">차종별 생산비중</h3>
+          <div className="p-2 bg-purple-50 rounded-full text-purple-600"><BarChart3 size={20} /></div>
+        </div>
+        <SimpleBarChart data={chartData} color="bg-indigo-500" />
       </div>
     </div>
   );
@@ -265,26 +430,29 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const fileInputRef = useRef(null);
   const [activeCell, setActiveCell] = useState({ row: null, col: null });
 
+  // Feature: Load Auto-save Data on Init
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(initialData);
-      let totalQty = 0;
-      let totalDefect = 0;
-      Object.keys(initialData).forEach(r => {
-        Object.keys(initialData[r]).forEach(c => {
-          const val = initialData[r][c];
-          const colDef = template.columns.find(col => col.key === c);
-          if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += (Number(val) || 0);
-          if (colDef?.isDefect) totalDefect += (Number(val) || 0);
-        });
-      });
-      onChange(initialData, totalQty, totalDefect);
-    } else {
-      setFormData({});
-      onChange({}, 0, 0);
-    }
+    } 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle, processType]);
+
+  // Effect to recalculate totals whenever formData changes
+  useEffect(() => {
+    let totalQty = 0;
+    let totalDefect = 0;
+    Object.keys(formData).forEach(r => {
+      Object.keys(formData[r]).forEach(c => {
+        const val = formData[r][c];
+        const colDef = template.columns.find(col => col.key === c);
+        if (colDef?.key === 'qty' || colDef?.key === 'check_qty') totalQty += (Number(val) || 0);
+        if (colDef?.isDefect) totalDefect += (Number(val) || 0);
+      });
+    });
+    onChange(formData, totalQty, totalDefect);
+  }, [formData, onChange, template.columns]);
+
 
   const handleCellChange = (rowLabel, colKey, value) => {
     const newData = { ...formData };
@@ -295,20 +463,6 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     
     newData[rowLabel][colKey] = finalValue;
     setFormData(newData);
-
-    let totalQty = 0;
-    let totalDefect = 0;
-
-    Object.keys(newData).forEach(r => {
-      Object.keys(newData[r]).forEach(c => {
-        const val = newData[r][c];
-        const cDef = template.columns.find(col => col.key === c);
-        if (cDef?.key === 'qty' || cDef?.key === 'check_qty') totalQty += (Number(val) || 0);
-        if (cDef?.isDefect) totalDefect += (Number(val) || 0);
-      });
-    });
-
-    onChange(newData, totalQty, totalDefect);
   };
 
   const handleCameraClick = (rowLabel, colKey) => {
@@ -584,16 +738,95 @@ const WorkerDashboard = ({ user, db, appId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   
+  // Feature: Auto Save Status
+  const [autoSaved, setAutoSaved] = useState(false);
+  const autoSaveTimerRef = useRef(null);
+
+  // Feature: Standard Modal
+  const [showStandard, setShowStandard] = useState(false);
+
+  // Feature: File Attachment
+  const [attachment, setAttachment] = useState(null); // { name, type, data }
+  const fileInputRef = useRef(null);
+
   // 작업 시간 State
   const [endHour, setEndHour] = useState('17');
   const [endMinute, setEndMinute] = useState('30');
 
   const logTitle = useMemo(() => getLogTitle(vehicle, processType), [vehicle, processType]);
 
+  // Feature: Load Auto-saved Data
+  useEffect(() => {
+    const savedData = localStorage.getItem('mes_autosave_data');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (new Date().getTime() - parsed.savedAt < 24 * 60 * 60 * 1000) {
+          setVehicle(parsed.vehicle || '');
+          setProcessType(parsed.processType || '');
+          setNotes(parsed.notes || '');
+          setEndHour(parsed.endHour || '17');
+          setEndMinute(parsed.endMinute || '30');
+          if (parsed.formDetails) setFormDetails(parsed.formDetails);
+          if (parsed.measurements) setMeasurements(parsed.measurements);
+        }
+      } catch (e) { console.error("Auto-load failed", e); }
+    }
+  }, []);
+
+  // Feature: Auto Save Logic (Debounced)
+  useEffect(() => {
+    if (!vehicle || !processType) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    
+    autoSaveTimerRef.current = setTimeout(() => {
+      const dataToSave = {
+        vehicle, processType, notes, formDetails, measurements, endHour, endMinute,
+        savedAt: new Date().getTime()
+      };
+      localStorage.setItem('mes_autosave_data', JSON.stringify(dataToSave));
+      setAutoSaved(true);
+      setTimeout(() => setAutoSaved(false), 2000);
+    }, 1000); // 1초 뒤 자동저장
+
+  }, [vehicle, processType, notes, formDetails, measurements, endHour, endMinute]);
+
+
   const handleFormChange = (details, qty, defect) => {
     setFormDetails(details);
     setTotalQty(qty);
     setTotalDefect(defect);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleAttachmentChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Size Validation (500KB)
+    if (file.size > 500 * 1024) {
+      alert("파일 크기는 500KB 이하여야 합니다.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAttachment({
+        name: file.name,
+        type: file.type,
+        data: event.target.result // Base64 string
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = () => {
+    setAttachment(null);
+    if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -616,18 +849,24 @@ const WorkerDashboard = ({ user, db, appId }) => {
         defectQty: totalDefect,
         notes: notes,
         workTime: workTime,
+        attachment: attachment, // Save attachment data
         timestamp: serverTimestamp(),
       });
       
       setSubmitSuccess(true);
+      // Clear Data & Auto-save
       setNotes('');
       setVehicle(''); 
       setProcessType('');
       setMeasurements({});
+      setFormDetails({});
+      setAttachment(null);
+      localStorage.removeItem('mes_autosave_data');
+      
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error) {
       console.error("Error adding document: ", error);
-      alert("저장 중 오류가 발생했습니다.");
+      alert("저장 중 오류가 발생했습니다. (파일 크기가 너무 클 수 있습니다)");
     } finally {
       setIsSubmitting(false);
     }
@@ -638,11 +877,23 @@ const WorkerDashboard = ({ user, db, appId }) => {
       <div className="p-4 md:p-8 pb-20 md:pb-4">
         {/* Header - Responsive Layout */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-black pb-2 mb-6 gap-4">
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-widest text-black flex items-center gap-3">
-            <FileText className="w-6 h-6 md:w-8 md:h-8" />
-            작 업 일 보
-          </h1>
+          <div className="flex items-center gap-3">
+             <h1 className="text-2xl md:text-3xl font-extrabold tracking-widest text-black flex items-center gap-3">
+               <FileText className="w-6 h-6 md:w-8 md:h-8" />
+               작 업 일 보
+             </h1>
+             {autoSaved && <span className="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded animate-fade-in print:hidden">자동저장됨</span>}
+          </div>
+          
           <div className="text-right w-full md:w-auto">
+            <div className="flex justify-end gap-2 mb-2 print:hidden">
+               <button onClick={() => setShowStandard(true)} className="text-xs flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition font-bold">
+                 <BookOpen size={14} /> 작업 표준서
+               </button>
+               <button onClick={handlePrint} className="text-xs flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition font-bold">
+                 <Printer size={14} /> 인쇄
+               </button>
+            </div>
             <p className="text-xs font-bold text-gray-600 mb-1 hidden md:block">결 재</p>
             <div className="flex border border-black w-full md:w-auto">
               <div className="flex-1 md:w-16 border-r border-black">
@@ -661,7 +912,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
           </div>
         </div>
 
-        {/* Info Grid - Stacked on Mobile */}
+        {/* Info Grid */}
         <div className="border border-black mb-6">
           <div className="flex flex-col md:flex-row border-b border-black">
             <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r">
@@ -750,10 +1001,11 @@ const WorkerDashboard = ({ user, db, appId }) => {
               vehicle={vehicle} 
               processType={processType} 
               onChange={handleFormChange} 
+              initialData={formDetails} 
             />
 
             {processType === '검사' && INSPECTION_SPECS[vehicle] && (
-              <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} />
+              <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} initialData={measurements} />
             )}
 
             <div className="border border-black">
@@ -769,8 +1021,37 @@ const WorkerDashboard = ({ user, db, appId }) => {
               ></textarea>
             </div>
 
+            {/* [NEW] File Attachment Section */}
+            <div className="border border-black p-3 bg-gray-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Paperclip size={18} className="text-gray-600" />
+                <span className="text-sm font-bold text-gray-700">파일 첨부 (성적서/도면)</span>
+                <span className="text-xs text-gray-400">(PDF, 이미지 / 500KB 이하)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {attachment ? (
+                   <div className="flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
+                     <FileIcon size={14} />
+                     <span className="max-w-[100px] truncate">{attachment.name}</span>
+                     <button onClick={removeAttachment} className="hover:text-red-500"><X size={14}/></button>
+                   </div>
+                ) : (
+                  <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 flex items-center gap-1">
+                    <span>파일 선택</span>
+                    <input 
+                      type="file" 
+                      accept="image/*, application/pdf" 
+                      ref={fileInputRef} 
+                      onChange={handleAttachmentChange} 
+                      className="hidden" 
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
             {/* Mobile Fixed Bottom Button */}
-            <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t border-gray-300 md:static md:p-0 md:bg-transparent md:border-0 md:flex md:justify-end md:pt-4 z-40">
+            <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t border-gray-300 md:static md:p-0 md:bg-transparent md:border-0 md:flex md:justify-end md:pt-4 z-40 print:hidden">
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
@@ -795,8 +1076,10 @@ const WorkerDashboard = ({ user, db, appId }) => {
         )}
       </div>
 
+      {showStandard && <StandardModal vehicle={vehicle} process={processType} onClose={() => setShowStandard(false)} />}
+
       {submitSuccess && (
-        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full">
+        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full print:hidden">
           <CheckCircle size={18} className="text-green-400" />
           <span className="font-bold text-sm">저장 완료</span>
         </div>
@@ -811,8 +1094,7 @@ const AdminDashboard = ({ db, appId }) => {
   const [loading, setLoading] = useState(true);
   const [editingLog, setEditingLog] = useState(null);
   const [viewImage, setViewImage] = useState(null);
-  
-  // 필터 상태
+  // 월별 필터 상태
   const [filterDate, setFilterDate] = useState(() => new Date().toISOString().slice(0, 7));
   const [filterVehicle, setFilterVehicle] = useState('All');
   const [filterProcess, setFilterProcess] = useState('All');
@@ -840,7 +1122,7 @@ const AdminDashboard = ({ db, appId }) => {
     return () => unsubscribe();
   }, [db, filterDate]);
 
-  // 필터링된 로그 계산
+  // 필터링
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
       const matchVehicle = filterVehicle === 'All' || log.vehicleModel === filterVehicle;
@@ -850,7 +1132,6 @@ const AdminDashboard = ({ db, appId }) => {
     });
   }, [logs, filterVehicle, filterProcess, filterWorker]);
 
-  // 작업자 목록 추출
   const uniqueWorkers = useMemo(() => {
     return ['All', ...new Set(logs.map(log => log.workerName))].sort();
   }, [logs]);
@@ -879,6 +1160,7 @@ const AdminDashboard = ({ db, appId }) => {
   const exportToCSV = (data) => {
     if (!data || data.length === 0) return alert("데이터가 없습니다.");
     
+    // CSV Export Logic
     const allDetailKeys = new Set();
     data.forEach(row => {
       if (row.details) Object.keys(row.details).forEach(rowKey => Object.keys(row.details[rowKey]).forEach(colKey => allDetailKeys.add(`${rowKey}_${colKey}`)));
@@ -886,10 +1168,12 @@ const AdminDashboard = ({ db, appId }) => {
     });
     
     const detailHeaders = Array.from(allDetailKeys).sort();
-    const headers = ['날짜', '작업자', '차종', '공정', '일보명', '작업시간', '총생산', '총불량', '특이사항', ...detailHeaders];
+    const headers = ['날짜', '작업자', '차종', '공정', '일보명', '작업시간', '총생산', '총불량', '특이사항', '첨부파일', ...detailHeaders];
     const csvRows = [headers.join(',')];
 
     data.forEach(row => {
+      const attachmentInfo = row.attachment ? `(첨부: ${row.attachment.name})` : '';
+      
       const vals = [
         new Date(row.timestamp?.seconds * 1000).toLocaleDateString(),
         `"${row.workerName}"`,
@@ -899,7 +1183,8 @@ const AdminDashboard = ({ db, appId }) => {
         `"${row.workTime || ''}"`,
         row.productionQty || 0,
         row.defectQty || 0,
-        `"${row.notes || ''}"`
+        `"${row.notes || ''}"`,
+        `"${attachmentInfo}"`
       ];
       const details = detailHeaders.map(h => {
         if (h.startsWith('MEASURE_')) {
@@ -945,6 +1230,7 @@ const AdminDashboard = ({ db, appId }) => {
             <span className="font-bold text-blue-600 block mb-1">치수 검사 데이터 있음</span>
           </div>
         )}
+        {/* FMB LOT 이미지 */}
         {Object.values(log.details).some(row => Object.values(row).some(v => typeof v === 'string' && v.startsWith('data:image'))) && (
            <div className="mt-2 pt-2 border-t border-gray-200 text-purple-600 font-bold flex items-center gap-1 cursor-pointer hover:text-purple-800" onClick={() => {
               const firstImg = Object.values(log.details).flatMap(row => Object.values(row)).find(v => typeof v === 'string' && v.startsWith('data:image'));
@@ -953,15 +1239,25 @@ const AdminDashboard = ({ db, appId }) => {
              <ImageIcon size={14} /> FMB LOT 사진 있음 (클릭)
            </div>
         )}
+        {/* 일반 첨부파일 */}
+        {log.attachment && (
+           <div className="mt-2 pt-2 border-t border-gray-200">
+             <a href={log.attachment.data} download={log.attachment.name} className="text-blue-600 font-bold flex items-center gap-1 hover:text-blue-800 text-xs">
+               <Paperclip size={14} /> {log.attachment.name} 다운로드
+             </a>
+           </div>
+        )}
       </div>
     );
   };
   
-  // 페이징 처리 (필터링된 결과 기준)
   const visibleLogs = filteredLogs.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
+      {/* Dashboard Stats */}
+      <DashboardStats logs={filteredLogs} />
+
       <div className="bg-white p-4 md:p-6 border-b md:border border-gray-300 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="w-full md:w-auto">
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
