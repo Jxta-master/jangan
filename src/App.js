@@ -62,7 +62,7 @@ const getLogTitle = (model, process) => {
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
-      "https://drive.google.com/uc?export=view&id=1Uvn87RCgaE_SC8VJf4ij_Dae_DL6JWMi",
+      "/images/DN8_A_SO",
       "https://drive.google.com/uc?export=view&id=1SnwCVW6Ynha5WiYyiXeJ3SuSScmvohTJ",
       "https://drive.google.com/uc?export=view&id=148Bw4zDuTLwPgZIVS4RiYD3_YNzA5X_F",
       "https://drive.google.com/uc?export=view&id=17_9WLaBCaIo7oHpcYD3xT5We48wmhk1a",
