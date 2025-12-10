@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, Layers
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -58,7 +58,7 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- 작업 표준서 데이터 ---
+// --- 작업 표준서 데이터 (로컬 이미지) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -124,8 +124,7 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      // FMB LOT만 유지 (나머지는 별도 테이블로 이동)
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true }, // FMB LOT만 카메라 사용
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
@@ -502,7 +501,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   );
 };
 
-// [NEW] Material LOT Form (A,B,C,D - Initial/Middle/Final)
+// [NEW] Material Lot Form (Restored)
 const MaterialLotForm = ({ onChange, initialData }) => {
   const [data, setData] = useState(initialData || {});
   const materials = ['A소재', 'B소재', 'C소재', 'D소재'];
@@ -946,9 +945,7 @@ const AdminDashboard = ({ db, appId }) => {
 
   const pressSummary = useMemo(() => {
     const summary = {};
-    VEHICLE_MODELS.forEach(model => {
-      summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 } };
-    });
+    VEHICLE_MODELS.forEach(model => { summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 } }; });
     logs.forEach(log => {
       if (log.processType === '프레스' && log.details) {
         const model = log.vehicleModel;
