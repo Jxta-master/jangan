@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -58,30 +58,71 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// --- 작업 표준서 데이터 (로컬 이미지) ---
+// --- [NEW] 작성 가이드 이미지 데이터 ---
+// public/images 폴더에 해당 파일명으로 가이드 이미지를 넣어주세요.
+const GUIDE_IMAGES = [
+  "/images/guide_1.jpg",
+  "/images/guide_2.jpg",
+  "/images/guide_3.jpg"
+];
+
+// --- [수정] 작업 표준서 데이터 (요청하신 데이터 적용됨) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
-      "/images/DN8_A_SO.jpeg", "/images/DN8_FRT_SO_P.jpeg", "/images/DN8_FRT_SO_Q.jpeg",
-      "/images/DN8_RR_SO_R.jpeg", "/images/DN8_RR_SO_S.jpeg", "/images/DN8_RR_SO_C.jpeg", "/images/DN8_RR_SO_D.jpeg",
+      "/images/DN8_A_SO.jpeg",
+      "/images/DN8_FRT_SO_P.jpeg",
+      "/images/DN8_FRT_SO_Q.jpeg",
+      "/images/DN8_RR_SO_R.jpeg",
+      "/images/DN8_RR_SO_S.jpeg",
+      "/images/DN8_RR_SO_C.jpeg",
+      "/images/DN8_RR_SO_D.jpeg", // 오타 수정 (imgaes -> images)
     ],
-    '프레스': ["/images/DN8_FRT_P.jpeg", "/images/DN8_RR_P.jpeg", "/images/DN8_RR_P_U.jpeg"],
-    '후가공': ["/images/DN8_FRT_HU.jpeg", "/images/DN8_RR_HU.jpeg"],
-    '검사': ["/images/DN8_G_P.jpg", "/images/DN8_G_R.jpg", "/images/DN8_O.jpg"]
+    '프레스': [
+      "/images/DN8_FRT_P.jpeg",
+      "/images/DN8_RR_P.jpeg",
+      "/images/DN8_RR_P_U.jpeg",
+    ],
+    '후가공': [
+      "/images/DN8_FRT_HU.jpeg",
+      "/images/DN8_RR_HU.jpeg",
+    ],
+    '검사': [
+      "/images/DN8_G_P.jpg",
+      "/images/DN8_G_R.jpg",
+      "/images/DN8_O.jpg",
+    ]
   },
   'GN7': {
-    '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [], 
+    '소재준비': ["/images/GN7_SO.jpeg"],
+    '프레스': ["/images/GN7_P.jpeg"],
+    '후가공': ["/images/GN7_HU.jpeg"],
+    '검사': [], 
   },
   'J100': {
-    '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"],
-    '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"], 
+    '소재준비': [
+      "/images/J100_SO.jpg",
+      "/images/J100_SO_B.jpg",
+      "/images/J100_SO_C.jpg",
+    ],
+    '프레스': ["/images/J100_P.jpg"],
+    '후가공': ["/images/J100_HU.jpg"],
+    '검사': ["/images/DN8_O.jpg"], 
   },
   'J120': {
-    '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"],
+    '소재준비': ["/images/J120_SO.jpg"],
+    '프레스': ["/images/J120_P.jpg"],
+    '후가공': ["/images/J120_HU.jpg"],
+    '검사': ["/images/DN8_O.jpg"],
   },
   'O100': {
-    '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"],
-    '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"],
+    '소재준비': [
+      "/images/O100_SO.jpg",
+      "/images/O100_SO_B1.jpg"
+    ],
+    '프레스': ["/images/O100_P.jpg"],
+    '후가공': ["/images/O100_HU.jpg"],
+    '검사': ["/images/O100_T.jpg"],
   }
 };
 
@@ -124,7 +165,8 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true }, // FMB LOT만 카메라 사용
+      // FMB LOT만 카메라 입력 (isPhoto: true)
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
@@ -194,6 +236,31 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
       <div className="relative max-w-full max-h-full">
         <img src={imageUrl} alt="확대 이미지" className="max-w-full max-h-[80vh] rounded-lg shadow-lg" />
         <button onClick={onClose} className="absolute -top-10 right-0 text-white p-2"><X size={32} /></button>
+      </div>
+    </div>
+  );
+};
+
+// [NEW] Guide Modal
+const GuideModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg p-0 max-w-3xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><HelpCircle className="text-orange-500" /> 작업일보 작성 가이드</h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
+          <div className="space-y-6">
+            {GUIDE_IMAGES.map((imgUrl, idx) => (
+              <div key={idx} className="bg-white p-2 rounded shadow-md border border-slate-200">
+                <div className="text-sm font-bold text-gray-500 mb-2 px-2">Step {idx + 1}</div>
+                <img src={imgUrl} alt={`Guide ${idx + 1}`} className="w-full h-auto rounded" onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/600x400/eee/999?text=Guide+Image+Not+Found"; }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-4 border-t bg-white flex justify-center"><button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-bold shadow">닫기</button></div>
       </div>
     </div>
   );
@@ -564,14 +631,21 @@ const MaterialLotForm = ({ onChange, initialData }) => {
 
 const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
   const [measureData, setMeasureData] = useState(initialData || {});
+  // Determine if it's a KGM model (J100, J120, O100) or standard (DN8, etc.)
+  const isKgmModel = isKGM(vehicle);
   const specs = INSPECTION_SPECS[vehicle] || [];
+
+  // Define columns based on vehicle type
+  const dimensionColumns = isKgmModel 
+    ? ['초', '중', '종'] 
+    : ['x1', 'x2', 'x3', 'x4', 'x5'];
 
   useEffect(() => { if (initialData) setMeasureData(initialData); }, [initialData]);
 
-  const handleMeasureChange = (part, xKey, value) => {
+  const handleMeasureChange = (part, colKey, value) => {
     const newData = { ...measureData };
     if (!newData[part]) newData[part] = {};
-    newData[part][xKey] = value;
+    newData[part][colKey] = value;
     setMeasureData(newData);
     onChange(newData);
   };
@@ -587,7 +661,7 @@ const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
             <tr className="bg-gray-100">
               <th className="border border-black px-2 py-3 text-center font-bold">구분</th>
               <th className="border border-black px-2 py-3 text-center font-bold">규격 (SPEC)</th>
-              {['x1', 'x2', 'x3', 'x4', 'x5'].map(x => <th key={x} className="border border-black px-2 py-3 text-center font-bold w-16">{x}</th>)}
+              {dimensionColumns.map(col => <th key={col} className="border border-black px-2 py-3 text-center font-bold w-16">{col}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -595,9 +669,9 @@ const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
               <tr key={item.part}>
                 <td className="border border-black px-2 py-3 text-center font-bold bg-gray-50 text-xs">{item.part}</td>
                 <td className="border border-black px-2 py-3 text-center font-medium">{item.spec}</td>
-                {['x1', 'x2', 'x3', 'x4', 'x5'].map((x) => (
-                  <td key={x} className="border border-black p-0 h-12">
-                    <input type="text" value={measureData[item.part]?.[x] || ''} className="w-full h-full text-center outline-none bg-transparent text-base" onChange={(e) => handleMeasureChange(item.part, x, e.target.value)} />
+                {dimensionColumns.map((col) => (
+                  <td key={col} className="border border-black p-0 h-12">
+                    <input type="text" value={measureData[item.part]?.[col] || ''} className="w-full h-full text-center outline-none bg-transparent text-base" onChange={(e) => handleMeasureChange(item.part, col, e.target.value)} />
                   </td>
                 ))}
               </tr>
@@ -680,6 +754,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
   const [autoSaved, setAutoSaved] = useState(false);
   const autoSaveTimerRef = useRef(null);
   const [showStandard, setShowStandard] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [attachment, setAttachment] = useState(null);
   const fileInputRef = useRef(null);
   const [endHour, setEndHour] = useState('17');
@@ -788,6 +863,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
           </div>
           <div className="text-right w-full md:w-auto">
             <div className="flex justify-end gap-2 mb-2 print:hidden">
+               <button onClick={() => setShowGuide(true)} className="text-xs flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200 transition font-bold"><HelpCircle size={14} /> 작성 가이드</button>
                <button onClick={() => setShowStandard(true)} className="text-xs flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition font-bold"><BookOpen size={14} /> 작업 표준서</button>
                <button onClick={handlePrint} className="text-xs flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition font-bold"><Printer size={14} /> 인쇄</button>
             </div>
@@ -891,6 +967,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
       </div>
 
       {showStandard && <StandardModal vehicle={vehicle} process={processType} onClose={() => setShowStandard(false)} />}
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
       {submitSuccess && <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full print:hidden"><CheckCircle size={18} className="text-green-400" /><span className="font-bold text-sm">저장 완료</span></div>}
     </div>
   );
