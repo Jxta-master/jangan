@@ -42,21 +42,50 @@ const isKGM = (model) => ['J100', 'O100', 'J120'].includes(model);
 const getLogTitle = (model, process) => {
   if (!model || !process) return '';
   switch (process) {
-    case '소재준비':
-      if (model === 'J100' || model === 'GN7') return `${model} 소재준비`;
-      return `소재준비 ${model}`;
-    case '프레스':
-      if (isKGM(model)) return 'KGM 프레스';
-      return `${model} 프레스`;
-    case '후가공':
-      return '후가공일보';
-    case '검사':
-      if (isKGM(model)) return 'KGM 검사일보';
-      return `검사일보 ${model}`;
-    default:
-      return `${model} ${process} 일보`;
+    case '소재준비': return `${model} 소재준비`;
+    case '프레스': return isKGM(model) ? 'KGM 프레스' : `${model} 프레스`;
+    case '후가공': return '후가공일보';
+    case '검사': return isKGM(model) ? 'KGM 검사일보' : `검사일보 ${model}`;
+    default: return `${model} ${process} 일보`;
   }
 };
+
+// [수정] 검사 공정 불량 유형 그룹화 (실제 양식 반영)
+const INSPECTION_DEFECT_GROUPS = [
+  {
+    category: '소재 불량',
+    items: [
+      { key: 'scorch_a', label: "스코치 'A'" },
+      { key: 'scorch_b', label: "스코치 'B'" },
+      { key: 'scorch_c', label: "스코치 'C'" },
+      { key: 'surface_flaw', label: '외면흠' },
+    ]
+  },
+  {
+    category: '조인트 불량',
+    items: [
+      { key: 'detach', label: '떨어짐' },
+      { key: 'shortage', label: '양부족' },
+      { key: 'push', label: '밀림' },
+      { key: 'overflow', label: '넘침' },
+      { key: 'step', label: '단차' },
+      { key: 'bubble', label: '기포' },
+      { key: 'chew', label: '씹힘' },
+      { key: 'foreign', label: '이물질' },
+    ]
+  },
+  {
+    category: '후가공 불량',
+    items: [
+      { key: 'length_bad', label: '길이불량' },
+      { key: 'finish_bad', label: '사상불량' },
+      { key: 'transport_dmg', label: '운반파손' },
+      { key: 'resin_expose', label: '수지노출' },
+      { key: 'ext_contam', label: '외면오염' },
+      { key: 'clip_missing', label: 'CLIP누락' },
+    ]
+  }
+];
 
 // --- [NEW] 작성 가이드 이미지 데이터 ---
 const GUIDE_IMAGES = [
@@ -117,6 +146,7 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'qty', label: '작업수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
       { key: 'spec_start', label: '초물(길이)', type: 'text' },
       { key: 'spec_mid', label: '중물(길이)', type: 'text' },
       { key: 'spec_end', label: '종물(길이)', type: 'text' },
@@ -131,30 +161,27 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true }, // FMB LOT만 카메라 사용
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'defect_bubble', label: '기포', type: 'number', isDefect: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
     ],
-    rows: (model) => {
-      if (model === 'DN8') {
-        return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'];
-      }
-      return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'];
-    }
+    rows: (model) => model === 'DN8' ? ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'] : ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
   post: {
     columns: [
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
   inspection: {
     columns: [
       { key: 'check_qty', label: '검사수량', type: 'number' },
-      { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true }
+      { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true, isPopup: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
     ],
     rows: (model) => {
       if (model === 'J100') return ['J100 LH', 'J100 RH'];
@@ -211,7 +238,60 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// Guide Modal
+// [수정] Inspection Defect Input Modal with Groups
+const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply }) => {
+  const [defects, setDefects] = useState(currentData || {});
+
+  const handleDefectChange = (key, value) => {
+    setDefects(prev => ({
+      ...prev,
+      [key]: Number(value) || 0
+    }));
+  };
+
+  const totalDefects = Object.values(defects).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg p-0 max-w-sm w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b bg-red-50 rounded-t-lg">
+          <h3 className="font-bold text-lg text-red-800 flex items-center gap-2"><AlertCircle size={20} /> 불량 상세 입력 ({rowLabel})</h3>
+          <button onClick={onClose}><X size={20} /></button>
+        </div>
+        <div className="p-4 space-y-5 overflow-y-auto flex-1">
+          {INSPECTION_DEFECT_GROUPS.map((group) => (
+            <div key={group.category} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+              <h4 className="font-bold text-sm text-gray-700 mb-2 border-b border-gray-200 pb-1">{group.category}</h4>
+              <div className="space-y-2">
+                {group.items.map(type => (
+                  <div key={type.key} className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-600">{type.label}</span>
+                    <input 
+                      type="number" 
+                      className="w-16 border border-gray-300 rounded p-1 text-right font-bold focus:ring-2 focus:ring-red-500 outline-none"
+                      value={defects[type.key] || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDefectChange(type.key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="flex justify-between items-center font-bold text-red-600 pt-2 border-t border-gray-300 text-lg">
+            <span>총 불량 합계</span>
+            <span>{totalDefects}</span>
+          </div>
+        </div>
+        <div className="p-4 border-t flex justify-end gap-2 bg-white rounded-b-lg">
+          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold hover:bg-gray-300 transition">취소</button>
+          <button onClick={() => onApply(totalDefects, defects)} className="px-4 py-2 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 transition">적용</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GuideModal = ({ onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
@@ -333,15 +413,16 @@ const DashboardStats = ({ logs }) => {
 const PressSummaryTable = ({ logs }) => {
   const summaryData = useMemo(() => {
     const summary = {};
-    VEHICLE_MODELS.forEach(model => { summary[model] = {}; });
+    VEHICLE_MODELS.forEach(model => { summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 }, 'RR END LH': { prod: 0, def: 0 }, 'RR END RH': { prod: 0, def: 0 } }; });
     logs.forEach(log => {
       if (log.processType === '프레스' && log.details) {
         const model = log.vehicleModel;
         if (!summary[model]) return;
         Object.entries(log.details).forEach(([part, data]) => {
-          if (!summary[model][part]) summary[model][part] = { prod: 0, def: 0 };
-          summary[model][part].prod += (Number(data.qty) || 0);
-          summary[model][part].def += (Number(data.defect_qty) || 0);
+          if (summary[model][part]) {
+            summary[model][part].prod += (Number(data.qty) || 0);
+            summary[model][part].def += (Number(data.defect_qty) || 0);
+          }
         });
       }
     });
@@ -381,7 +462,7 @@ const PressSummaryTable = ({ logs }) => {
                     </tr>
                   ))}
                   <tr className="bg-blue-50 border-b font-semibold">
-                    <td colSpan="1" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
+                    <td colSpan="2" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
                     <td className="px-4 py-2 text-right border-r text-blue-800">{Object.values(parts).reduce((a, b) => a + b.prod, 0).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-red-600">{Object.values(parts).reduce((a, b) => a + b.def, 0).toLocaleString()}</td>
                   </tr>
@@ -446,7 +527,7 @@ const LoginScreen = ({ onLogin }) => {
   );
 };
 
-const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
+const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefectDetail }) => {
   const formType = getFormType(processType);
   const template = FORM_TEMPLATES[formType];
   const rowLabels = template.rows(vehicle);
@@ -462,6 +543,20 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
     let totalQty = 0;
     let totalDefect = 0;
     Object.keys(formData).forEach(r => {
+      // 정품수량 자동 계산
+      const qty = Number(formData[r]['qty'] || formData[r]['check_qty'] || 0);
+      const defect = Number(formData[r]['defect_qty'] || formData[r]['defect_total'] || 0);
+      
+      // Update good_qty automatically (if it exists in template)
+      if (template.columns.find(c => c.key === 'good_qty')) {
+        if (formData[r]['good_qty'] !== qty - defect) {
+           setFormData(prev => ({
+             ...prev,
+             [r]: { ...prev[r], good_qty: qty - defect }
+           }));
+        }
+      }
+
       Object.keys(formData[r]).forEach(c => {
         const val = formData[r][c];
         const colDef = template.columns.find(col => col.key === c);
@@ -484,6 +579,10 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   const handleCameraClick = (rowLabel, colKey) => {
     setActiveCell({ row: rowLabel, col: colKey });
     if (fileInputRef.current) fileInputRef.current.click();
+  };
+  
+  const handleDefectPopup = (rowLabel) => {
+    if(onDefectDetail) onDefectDetail(rowLabel, formData[rowLabel]?.defect_details || {});
   };
 
   const handleFileChange = async (e) => {
@@ -518,6 +617,30 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
                 {template.columns.map(col => {
                   const cellValue = formData[rowLabel]?.[col.key] || '';
                   const hasImage = isImage(cellValue);
+                  
+                  if (col.isPopup) {
+                    return (
+                       <td key={col.key} className="border border-black p-0 h-12 relative bg-white">
+                         <button 
+                           onClick={() => handleDefectPopup(rowLabel)}
+                           className="w-full h-full text-center text-red-600 font-bold hover:bg-red-50 flex items-center justify-center gap-1"
+                         >
+                           {cellValue || 0} <ChevronDown size={14}/>
+                         </button>
+                       </td>
+                    );
+                  }
+
+                  if (col.isReadOnly) {
+                    return (
+                       <td key={col.key} className="border border-black p-0 h-12 bg-gray-100">
+                         <div className="w-full h-full flex items-center justify-center font-bold text-blue-800">
+                           {cellValue || 0}
+                         </div>
+                       </td>
+                    );
+                  }
+
                   return (
                     <td key={col.key} className="border border-black p-0 h-12 relative group bg-white">
                       {hasImage ? (
@@ -541,7 +664,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   );
 };
 
-// [NEW] Material Lot Form (Restored) - 초물(LH/RH), 중물(LH/RH), 종물(LH/RH)
+// [NEW] Material Lot Form (Restored)
 const MaterialLotForm = ({ onChange, initialData }) => {
   const [data, setData] = useState(initialData || {});
   const materials = ['A소재', 'B소재', 'C소재', 'D소재'];
@@ -604,11 +727,8 @@ const MaterialLotForm = ({ onChange, initialData }) => {
 
 const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
   const [measureData, setMeasureData] = useState(initialData || {});
-  // Determine if it's a KGM model (J100, J120, O100) or standard (DN8, etc.)
   const isKgmModel = isKGM(vehicle);
   const specs = INSPECTION_SPECS[vehicle] || [];
-
-  // Define columns based on vehicle type
   const dimensionColumns = isKgmModel 
     ? ['초', '중', '종'] 
     : ['x1', 'x2', 'x3', 'x4', 'x5'];
@@ -732,6 +852,12 @@ const WorkerDashboard = ({ user, db, appId }) => {
   const fileInputRef = useRef(null);
   const [endHour, setEndHour] = useState('17');
   const [endMinute, setEndMinute] = useState('30');
+  
+  // Defect Popup State
+  const [showDefectModal, setShowDefectModal] = useState(false);
+  const [defectRowLabel, setDefectRowLabel] = useState('');
+  const [currentDefectData, setCurrentDefectData] = useState({});
+
   const logTitle = useMemo(() => getLogTitle(vehicle, processType), [vehicle, processType]);
 
   useEffect(() => {
@@ -771,6 +897,25 @@ const WorkerDashboard = ({ user, db, appId }) => {
     setFormDetails(details);
     setTotalQty(qty);
     setTotalDefect(defect);
+  };
+  
+  const handleDefectDetailOpen = (rowLabel, data) => {
+    setDefectRowLabel(rowLabel);
+    setCurrentDefectData(data || {});
+    setShowDefectModal(true);
+  };
+  
+  const handleDefectApply = (total, detailData) => {
+    // Update formDetails with total defect and details
+    setFormDetails(prev => ({
+      ...prev,
+      [defectRowLabel]: {
+        ...prev[defectRowLabel],
+        defect_total: total,
+        defect_details: detailData
+      }
+    }));
+    setShowDefectModal(false);
   };
 
   const handlePrint = () => { window.print(); };
@@ -904,7 +1049,13 @@ const WorkerDashboard = ({ user, db, appId }) => {
               <div className="text-xs space-x-3 font-mono flex"><span>합격: {totalQty.toLocaleString()}</span><span className="text-red-300">불량: {totalDefect.toLocaleString()}</span></div>
             </div>
 
-            <DynamicTableForm vehicle={vehicle} processType={processType} onChange={handleFormChange} initialData={formDetails} />
+            <DynamicTableForm 
+               vehicle={vehicle} 
+               processType={processType} 
+               onChange={handleFormChange} 
+               initialData={formDetails}
+               onDefectDetail={handleDefectDetailOpen} // Pass handler
+            />
             
             {['프레스', '후가공', '검사'].includes(processType) && (
               <MaterialLotForm onChange={setMaterialLots} initialData={materialLots} />
@@ -941,6 +1092,14 @@ const WorkerDashboard = ({ user, db, appId }) => {
 
       {showStandard && <StandardModal vehicle={vehicle} process={processType} onClose={() => setShowStandard(false)} />}
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+      {showDefectModal && (
+        <InspectionDefectModal 
+          rowLabel={defectRowLabel} 
+          currentData={currentDefectData}
+          onClose={() => setShowDefectModal(false)}
+          onApply={handleDefectApply}
+        />
+      )}
       {submitSuccess && <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full print:hidden"><CheckCircle size={18} className="text-green-400" /><span className="font-bold text-sm">저장 완료</span></div>}
     </div>
   );
