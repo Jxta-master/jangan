@@ -50,7 +50,7 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// [수정] 검사 공정 불량 유형 그룹화 (실제 양식 반영)
+// [수정] 검사 공정 불량 유형 상세 리스트 (확장됨)
 const INSPECTION_DEFECT_GROUPS = [
   {
     category: '소재 불량',
@@ -59,6 +59,8 @@ const INSPECTION_DEFECT_GROUPS = [
       { key: 'scorch_b', label: "스코치 'B'" },
       { key: 'scorch_c', label: "스코치 'C'" },
       { key: 'surface_flaw', label: '외면흠' },
+      { key: 'cutting_bad', label: '컷팅불량' },
+      { key: 'discolor', label: '이색/광택' },
     ]
   },
   {
@@ -72,6 +74,9 @@ const INSPECTION_DEFECT_GROUPS = [
       { key: 'bubble', label: '기포' },
       { key: 'chew', label: '씹힘' },
       { key: 'foreign', label: '이물질' },
+      { key: 'unmolded', label: '미성형' },
+      { key: 'dent', label: '찍힘' },
+      { key: 'deformation', label: '변형' },
     ]
   },
   {
@@ -83,11 +88,14 @@ const INSPECTION_DEFECT_GROUPS = [
       { key: 'resin_expose', label: '수지노출' },
       { key: 'ext_contam', label: '외면오염' },
       { key: 'clip_missing', label: 'CLIP누락' },
+      { key: 'hole_block', label: '홀막힘' },
+      { key: 'tape_bad', label: 'Tape불량' },
+      { key: 'other', label: '기타' },
     ]
   }
 ];
 
-// --- [NEW] 작성 가이드 이미지 데이터 ---
+// --- 작성 가이드 이미지 데이터 ---
 const GUIDE_IMAGES = [
   "/images/guide_1.jpg",
   "/images/guide_2.jpg",
@@ -146,7 +154,7 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'qty', label: '작업수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
       { key: 'spec_start', label: '초물(길이)', type: 'text' },
       { key: 'spec_mid', label: '중물(길이)', type: 'text' },
       { key: 'spec_end', label: '종물(길이)', type: 'text' },
@@ -165,8 +173,7 @@ const FORM_TEMPLATES = {
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
-      // 'defect_bubble' 제거됨 (요청사항 1)
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
     ],
     rows: (model) => model === 'DN8' ? ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'] : ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
@@ -174,15 +181,15 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
   inspection: {
     columns: [
       { key: 'check_qty', label: '검사수량', type: 'number' },
-      { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true, isPopup: true }, // [수정] 팝업 입력
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
+      { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true, isPopup: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
     ],
     rows: (model) => {
       if (model === 'J100') return ['J100 LH', 'J100 RH'];
@@ -231,15 +238,13 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
   return (
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4" onClick={onClose}>
-      <div className="relative max-w-full max-h-full">
-        <img src={imageUrl} alt="확대 이미지" className="max-w-full max-h-[80vh] rounded-lg shadow-lg" />
-        <button onClick={onClose} className="absolute -top-10 right-0 text-white p-2"><X size={32} /></button>
-      </div>
+      <img src={imageUrl} alt="확대 이미지" className="max-w-full max-h-[80vh] rounded-lg shadow-lg" />
+      <button onClick={onClose} className="absolute -top-10 right-0 text-white p-2"><X size={32} /></button>
     </div>
   );
 };
 
-// [NEW] Inspection Defect Input Modal
+// Inspection Defect Input Modal with Groups
 const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply }) => {
   const [defects, setDefects] = useState(currentData || {});
 
@@ -1028,6 +1033,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
   };
   
   const handleDefectApply = (total, detailData) => {
+    // Update formDetails with total defect and details
     setFormDetails(prev => ({
       ...prev,
       [defectRowLabel]: {
@@ -1392,7 +1398,7 @@ const AdminDashboard = ({ db, appId }) => {
           <select value={filterWorker} onChange={(e) => setFilterWorker(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 작업자</option>{uniqueWorkers.map(w => w !== 'All' && <option key={w} value={w}>{w}</option>)}</select>
         </div>
         <div className="flex gap-2">
-           <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><Plus size={16} /> 추가작성</button>
+           <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><Plus size={16} /> 누락분 추가</button>
            <button onClick={() => setShowPressSummary(!showPressSummary)} className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded ${showPressSummary ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}><List size={16} /> 프레스 요약</button>
            <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><FileSpreadsheet size={16} /> Excel 다운로드</button>
         </div>
