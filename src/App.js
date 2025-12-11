@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator, Globe
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -30,6 +30,98 @@ const db = getFirestore(app);
 // 로컬 환경용 고정 App ID
 const appId = 'mes-production-v1';
 
+// --- [NEW] Translations ---
+const TRANSLATIONS = {
+  // General
+  '작 업 일 보': { en: 'Work Log', ru: 'Рабочий журнал', th: 'บันทึกงาน', vn: 'Nhật ký công việc' },
+  '작업일보 작성 가이드': { en: 'Guide', ru: 'Руководство', th: 'คู่มือ', vn: 'Hướng dẫn' },
+  '작업 표준서': { en: 'Standard', ru: 'Стандарт', th: 'มาตรฐาน', vn: 'Tiêu chuẩn' },
+  '인쇄': { en: 'Print', ru: 'Печать', th: 'พิมพ์', vn: 'In' },
+  '결 재': { en: 'Approval', ru: 'Утверждение', th: 'การอนุมัติ', vn: 'Phê duyệt' },
+  '작 성': { en: 'Draft', ru: 'Составил', th: 'ผู้เขียน', vn: 'Người lập' },
+  '검 토': { en: 'Review', ru: 'Проверил', th: 'ตรวจสอบ', vn: 'Kiểm tra' },
+  '승 인': { en: 'Approve', ru: 'Утвердил', th: 'อนุมัติ', vn: 'Phê duyệt' },
+  '작업일자': { en: 'Date', ru: 'Дата', th: 'วันที่', vn: 'Ngày' },
+  '작업자': { en: 'Worker', ru: 'Рабочий', th: 'คนงาน', vn: 'Công nhân' },
+  '작업시간': { en: 'Time', ru: 'Время', th: 'เวลา', vn: 'Thời gian' },
+  '차종': { en: 'Model', ru: 'Модель', th: 'รุ่น', vn: 'Mẫu xe' },
+  '공정': { en: 'Process', ru: 'Процесс', th: 'กระบวนการ', vn: 'Công đoạn' },
+  '합격': { en: 'OK', ru: 'Годно', th: 'ผ่าน', vn: 'Đạt' },
+  '불량': { en: 'NG', ru: 'Брак', th: 'เสีย', vn: 'Lỗi' },
+  '특이사항 및 인수인계': { en: 'Notes / Handover', ru: 'Заметки / Передача', th: 'หมายเหตุ / ส่งมอบ', vn: 'Ghi chú / Bàn giao' },
+  '내용을 입력하세요.': { en: 'Enter text...', ru: 'Введите текст...', th: 'กรอกข้อมูล...', vn: 'Nhập nội dung...' },
+  '파일 첨부 (성적서/도면)': { en: 'Attach File', ru: 'Прикрепить файл', th: 'แนบไฟล์', vn: 'Đính kèm tệp' },
+  '파일 선택': { en: 'Select File', ru: 'Выбрать', th: 'เลือกไฟล์', vn: 'Chọn tệp' },
+  '일보 저장': { en: 'Save Log', ru: 'Сохранить', th: 'บันทึก', vn: 'Lưu' },
+  '저장 중...': { en: 'Saving...', ru: 'Сохранение...', th: 'กำลังบันทึก...', vn: 'Đang lưu...' },
+  '자동저장됨': { en: 'Auto-saved', ru: 'Автосохранение', th: 'บันทึกอัตโนมัติ', vn: 'Đã lưu tự động' },
+  '사진등록됨': { en: 'Photo Added', ru: 'Фото добавлено', th: 'เพิ่มรูปแล้ว', vn: 'Đã thêm ảnh' },
+  
+  // Columns & Fields
+  '구분': { en: 'Div', ru: 'Раздел', th: 'ประเภท', vn: 'Phân loại' },
+  '작업수량': { en: 'Work Qty', ru: 'Кол-во', th: 'จำนวนงาน', vn: 'SL Làm việc' },
+  '생산수량': { en: 'Prod Qty', ru: 'Продукция', th: 'จำนวนผลิต', vn: 'SL Sản xuất' },
+  '불량수량': { en: 'Defect Qty', ru: 'Брак', th: 'จำนวนเสีย', vn: 'SL Lỗi' },
+  '정품수량': { en: 'Good Qty', ru: 'Годные', th: 'จำนวนดี', vn: 'SL Tốt' },
+  '초물(길이)': { en: 'Initial(Len)', ru: 'Начало(Дл)', th: 'ต้น(ยาว)', vn: 'Đầu(Dài)' },
+  '중물(길이)': { en: 'Middle(Len)', ru: 'Середина(Дл)', th: 'กลาง(ยาว)', vn: 'Giữa(Dài)' },
+  '종물(길이)': { en: 'Final(Len)', ru: 'Конец(Дл)', th: 'ท้าย(ยาว)', vn: 'Cuối(Dài)' },
+  'Lot No': { en: 'Lot No', ru: 'Партия', th: 'ล็อต', vn: 'Số Lo' },
+  'FMB LOT': { en: 'FMB LOT', ru: 'FMB LOT', th: 'FMB LOT', vn: 'FMB LOT' },
+  '수지 LOT (직/둔)': { en: 'Resin LOT', ru: 'Смола LOT', th: 'เรซิน LOT', vn: 'Resin LOT' },
+  '기포': { en: 'Bubble', ru: 'Пузырь', th: 'ฟองอากาศ', vn: 'Bọt khí' },
+  '검사수량': { en: 'Insp Qty', ru: 'Кол-во пров.', th: 'จำนวนตรวจ', vn: 'SL Kiểm tra' },
+  '소재 LOT 관리': { en: 'Material LOT', ru: 'Материал LOT', th: 'จัดการล็อตวัสดุ', vn: 'Quản lý Lo vật liệu' },
+  '초물(LH/RH)': { en: 'Initial', ru: 'Начало', th: 'ต้น', vn: 'Đầu' },
+  '중물(LH/RH)': { en: 'Middle', ru: 'Середина', th: 'กลาง', vn: 'Giữa' },
+  '종물(LH/RH)': { en: 'Final', ru: 'Конец', th: 'ท้าย', vn: 'Cuối' },
+  '중요 치수(길이) 검사현황': { en: 'Dimension Check', ru: 'Проверка размеров', th: 'ตรวจสอบขนาด', vn: 'Kiểm tra kích thước' },
+  '규격 (SPEC)': { en: 'SPEC', ru: 'Спец.', th: 'สเปค', vn: 'Quy cách' },
+
+  // Defects
+  '불량 상세 입력': { en: 'Defect Details', ru: 'Детали брака', th: 'รายละเอียดของเสีย', vn: 'Chi tiết lỗi' },
+  '소재 불량': { en: 'Material Defect', ru: 'Дефект мат.', th: 'วัสดุเสีย', vn: 'Lỗi vật liệu' },
+  '조인트 불량': { en: 'Joint Defect', ru: 'Дефект соед.', th: 'ข้อต่อเสีย', vn: 'Lỗi mối nối' },
+  '후가공 불량': { en: 'Finish Defect', ru: 'Дефект отд.', th: 'ตกแต่งเสีย', vn: 'Lỗi gia công' },
+  '총 불량 합계': { en: 'Total Defects', ru: 'Всего брака', th: 'รวมของเสีย', vn: 'Tổng lỗi' },
+  '취소': { en: 'Cancel', ru: 'Отмена', th: 'ยกเลิก', vn: 'Hủy' },
+  '적용': { en: 'Apply', ru: 'Применить', th: 'ใช้', vn: 'Áp dụng' },
+  
+  // Defect Items
+  "스코치 'A'": { en: "Scorch A", ru: "Ожог A", th: "ไหม้ A", vn: "Cháy A" },
+  "스코치 'B'": { en: "Scorch B", ru: "Ожог B", th: "ไหม้ B", vn: "Cháy B" },
+  "스코치 'C'": { en: "Scorch C", ru: "Ожог C", th: "ไหม้ C", vn: "Cháy C" },
+  '외면흠': { en: 'Surface Flaw', ru: 'Дефект пов.', th: 'รอยผิวนอก', vn: 'Lỗi bề mặt' },
+  '컷팅불량': { en: 'Cutting Bad', ru: 'Ошибка резки', th: 'ตัดเสีย', vn: 'Lỗi cắt' },
+  '이색/광택': { en: 'Discolor', ru: 'Цвет/Блеск', th: 'สีเพี้ยน', vn: 'Sai màu' },
+  '떨어짐': { en: 'Detach', ru: 'Отслоение', th: 'หลุด', vn: 'Bong tróc' },
+  '양부족': { en: 'Shortage', ru: 'Нехватка', th: 'ขาด', vn: 'Thiếu' },
+  '밀림': { en: 'Push', ru: 'Сдвиг', th: 'เลื่อน', vn: 'Đùn' },
+  '넘침': { en: 'Overflow', ru: 'Перелив', th: 'ล้น', vn: 'Tràn' },
+  '단차': { en: 'Step', ru: 'Ступень', th: 'ต่างระดับ', vn: 'Lệch' },
+  '씹힘': { en: 'Chew', ru: 'Замятие', th: 'บิ่น', vn: 'Cấn' },
+  '이물질': { en: 'Foreign', ru: 'Инородное', th: 'สิ่งแปลกปลอม', vn: 'Dị vật' },
+  '미성형': { en: 'Unmolded', ru: 'Недолив', th: 'ขึ้นรูปไม่ครบ', vn: 'Chưa định hình' },
+  '찍힘': { en: 'Dent', ru: 'Вмятина', th: 'รอยกด', vn: 'Vết móp' },
+  '변형': { en: 'Deform', ru: 'Деформ.', th: 'ผิดรูป', vn: 'Biến dạng' },
+  '길이불량': { en: 'Length Bad', ru: 'Длина', th: 'ความยาวผิด', vn: 'Sai độ dài' },
+  '사상불량': { en: 'Finish Bad', ru: 'Отделка', th: 'ตกแต่งไม่ดี', vn: 'Lỗi hoàn thiện' },
+  '운반파손': { en: 'Trans Damage', ru: 'Повреждение', th: 'เสียหายขนส่ง', vn: 'Hỏng vận chuyển' },
+  '수지노출': { en: 'Resin Exp', ru: 'Смола', th: 'เรซินโผล่', vn: 'Lộ nhựa' },
+  '외면오염': { en: 'Ext Contam', ru: 'Загрязнение', th: 'เปื้อนภายนอก', vn: 'Bẩn bên ngoài' },
+  'CLIP누락': { en: 'Clip Miss', ru: 'Нет клипсы', th: 'คลิปหาย', vn: 'Thiếu Clip' },
+  '홀막힘': { en: 'Hole Block', ru: 'Засор отв.', th: 'รูตัน', vn: 'Tắc lỗ' },
+  'Tape불량': { en: 'Tape Bad', ru: 'Лента', th: 'เทปเสีย', vn: 'Lỗi băng keo' },
+  '기타': { en: 'Other', ru: 'Прочее', th: 'อื่นๆ', vn: 'Khác' },
+};
+
+// Helper function for translation
+const getTranslatedText = (text, lang) => {
+  if (lang === 'kr' || !text) return text;
+  const translation = TRANSLATIONS[text]?.[lang];
+  return translation ? `${text} (${translation})` : text;
+};
+
 // --- Constants & Helper Functions ---
 const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
 const PROCESS_TYPES = ['소재준비', '프레스', '후가공', '검사'];
@@ -50,7 +142,6 @@ const getLogTitle = (model, process) => {
   }
 };
 
-// [수정] 검사 공정 불량 유형 상세 리스트 (확장됨)
 const INSPECTION_DEFECT_GROUPS = [
   {
     category: '소재 불량',
@@ -95,14 +186,12 @@ const INSPECTION_DEFECT_GROUPS = [
   }
 ];
 
-// --- 작성 가이드 이미지 데이터 ---
 const GUIDE_IMAGES = [
   "/images/guide_1.jpg",
   "/images/guide_2.jpg",
   "/images/guide_3.jpg"
 ];
 
-// --- 작업 표준서 데이터 (로컬 이미지) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -113,42 +202,19 @@ const PROCESS_STANDARDS = {
     '후가공': ["/images/DN8_FRT_HU.jpeg", "/images/DN8_RR_HU.jpeg"],
     '검사': ["/images/DN8_G_P.jpg", "/images/DN8_G_R.jpg", "/images/DN8_O.jpg"]
   },
-  'GN7': {
-    '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [], 
-  },
-  'J100': {
-    '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"],
-    '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"], 
-  },
-  'J120': {
-    '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"],
-  },
-  'O100': {
-    '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"],
-    '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"],
-  }
+  'GN7': { '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [] },
+  'J100': { '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"], '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"] },
+  'J120': { '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"] },
+  'O100': { '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"], '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"] }
 };
 
-// --- Inspection Specs ---
 const INSPECTION_SPECS = {
-  'DN8': [
-    { part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' },
-    { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' },
-    { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' },
-    { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' },
-  ],
-  'J100': [
-    { part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' },
-  ],
-  'J120': [
-    { part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' },
-  ],
-  'O100': [
-    { part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' },
-  ]
+  'DN8': [{ part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' }, { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' }, { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' }, { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' }],
+  'J100': [{ part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' }],
+  'J120': [{ part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' }],
+  'O100': [{ part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' }]
 };
 
-// --- Form Templates ---
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -244,8 +310,7 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// Inspection Defect Input Modal with Groups
-const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply }) => {
+const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply, lang }) => {
   const [defects, setDefects] = useState(currentData || {});
 
   const handleDefectChange = (key, value) => {
@@ -261,17 +326,17 @@ const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
       <div className="bg-white rounded-lg p-0 max-w-sm w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center p-4 border-b bg-red-50 rounded-t-lg">
-          <h3 className="font-bold text-lg text-red-800 flex items-center gap-2"><AlertCircle size={20} /> 불량 상세 입력 ({rowLabel})</h3>
+          <h3 className="font-bold text-lg text-red-800 flex items-center gap-2"><AlertCircle size={20} /> {getTranslatedText('불량 상세 입력', lang)} ({rowLabel})</h3>
           <button onClick={onClose}><X size={20} /></button>
         </div>
         <div className="p-4 space-y-5 overflow-y-auto flex-1">
           {INSPECTION_DEFECT_GROUPS.map((group) => (
             <div key={group.category} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <h4 className="font-bold text-sm text-gray-700 mb-2 border-b border-gray-200 pb-1">{group.category}</h4>
+              <h4 className="font-bold text-sm text-gray-700 mb-2 border-b border-gray-200 pb-1">{getTranslatedText(group.category, lang)}</h4>
               <div className="space-y-2">
                 {group.items.map(type => (
                   <div key={type.key} className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-600">{type.label}</span>
+                    <span className="text-sm font-medium text-gray-600">{getTranslatedText(type.label, lang)}</span>
                     <input 
                       type="number" 
                       className="w-16 border border-gray-300 rounded p-1 text-right font-bold focus:ring-2 focus:ring-red-500 outline-none"
@@ -285,25 +350,25 @@ const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply }) => {
             </div>
           ))}
           <div className="flex justify-between items-center font-bold text-red-600 pt-2 border-t border-gray-300 text-lg">
-            <span>총 불량 합계</span>
+            <span>{getTranslatedText('총 불량 합계', lang)}</span>
             <span>{totalDefects}</span>
           </div>
         </div>
         <div className="p-4 border-t flex justify-end gap-2 bg-white rounded-b-lg">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold hover:bg-gray-300 transition">취소</button>
-          <button onClick={() => onApply(totalDefects, defects)} className="px-4 py-2 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 transition">적용</button>
+          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold hover:bg-gray-300 transition">{getTranslatedText('취소', lang)}</button>
+          <button onClick={() => onApply(totalDefects, defects)} className="px-4 py-2 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 transition">{getTranslatedText('적용', lang)}</button>
         </div>
       </div>
     </div>
   );
 };
 
-const GuideModal = ({ onClose }) => {
+const GuideModal = ({ onClose, lang }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
       <div className="bg-white rounded-lg p-0 max-w-3xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><HelpCircle className="text-orange-500" /> 작업일보 작성 가이드</h3>
+          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><HelpCircle className="text-orange-500" /> {getTranslatedText('작업일보 작성 가이드', lang)}</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
@@ -316,19 +381,19 @@ const GuideModal = ({ onClose }) => {
             ))}
           </div>
         </div>
-        <div className="p-4 border-t bg-white flex justify-center"><button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-bold shadow">닫기</button></div>
+        <div className="p-4 border-t bg-white flex justify-center"><button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-bold shadow">{getTranslatedText('취소', lang)}</button></div>
       </div>
     </div>
   );
 };
 
-const StandardModal = ({ vehicle, process, onClose }) => {
+const StandardModal = ({ vehicle, process, onClose, lang }) => {
   const standardImages = PROCESS_STANDARDS[vehicle]?.[process] || [];
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
       <div className="bg-white rounded-lg p-0 max-w-3xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><BookOpen className="text-blue-600" /> 작업 표준서 ({vehicle} - {process})</h3>
+          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><BookOpen className="text-blue-600" /> {getTranslatedText('작업 표준서', lang)} ({vehicle} - {process})</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
@@ -349,7 +414,7 @@ const StandardModal = ({ vehicle, process, onClose }) => {
             </div>
           )}
         </div>
-        <div className="p-4 border-t bg-white flex justify-center"><button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-bold shadow">닫기</button></div>
+        <div className="p-4 border-t bg-white flex justify-center"><button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-bold shadow">{getTranslatedText('취소', lang)}</button></div>
       </div>
     </div>
   );
@@ -425,10 +490,9 @@ const PressSummaryTable = ({ logs }) => {
         const model = log.vehicleModel;
         if (!summary[model]) return;
         Object.entries(log.details).forEach(([part, data]) => {
-          if (summary[model][part]) {
-            summary[model][part].prod += (Number(data.qty) || 0);
-            summary[model][part].def += (Number(data.defect_qty) || 0);
-          }
+          if (!summary[model][part]) summary[model][part] = { prod: 0, def: 0 };
+          summary[model][part].prod += (Number(data.qty) || 0);
+          summary[model][part].def += (Number(data.defect_qty) || 0);
         });
       }
     });
@@ -489,20 +553,21 @@ const PressSummaryTable = ({ logs }) => {
 };
 
 const LoginScreen = ({ onLogin }) => {
-  const ADMIN_PASSWORD = '1234abc'; 
+  const ADMIN_PASSWORD = 'jangan123'; 
   const [role, setRole] = useState('worker');
   const [name, setName] = useState('');
   const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [lang, setLang] = useState('kr');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
     if (role === 'worker') {
-      if (name.trim()) onLogin({ name, role }); else setError('이름을 입력해주세요.');
+      if (name.trim()) onLogin({ name, role, lang }); else setError(getTranslatedText('이름을 입력해주세요.', lang));
     } else {
-      if (adminId === 'admin' && password === ADMIN_PASSWORD) onLogin({ name: '관리자', role }); else setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      if (adminId === 'admin' && password === ADMIN_PASSWORD) onLogin({ name: '관리자', role, lang }); else setError(getTranslatedText('아이디 또는 비밀번호가 올바르지 않습니다.', lang));
     }
   };
 
@@ -511,14 +576,29 @@ const LoginScreen = ({ onLogin }) => {
       <div className="bg-white p-8 rounded shadow-xl max-w-sm w-full border border-slate-300">
         <div className="flex justify-center mb-6"><div className="bg-blue-700 p-4 rounded-2xl shadow-lg"><ClipboardList className="w-10 h-10 text-white" /></div></div>
         <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">장안산업 작업관리</h2>
-        <p className="text-center text-slate-500 mb-6 text-sm">작업자 이름을 넣고 로그인을 눌러주세요</p>
+        
+        <div className="flex justify-center mb-6">
+           <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
+             {['kr', 'en', 'ru', 'th', 'vn'].map(l => (
+               <button 
+                 key={l} 
+                 type="button" 
+                 onClick={() => setLang(l)} 
+                 className={`px-3 py-1 rounded text-lg ${lang === l ? 'bg-white shadow text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+               >
+                 {l === 'kr' ? '🇰🇷' : l === 'en' ? '🇺🇸' : l === 'ru' ? '🇷🇺' : l === 'th' ? '🇹🇭' : '🇻🇳'}
+               </button>
+             ))}
+           </div>
+        </div>
+
         <div className="flex bg-slate-100 p-1 rounded-lg mb-6 border border-slate-200">
-          <button type="button" onClick={() => { setRole('worker'); setError(''); }} className={`flex-1 py-3 px-4 rounded-md text-sm font-bold transition ${role === 'worker' ? 'bg-white text-blue-700 shadow-sm border border-slate-200' : 'text-slate-500'}`}>작업자</button>
+          <button type="button" onClick={() => { setRole('worker'); setError(''); }} className={`flex-1 py-3 px-4 rounded-md text-sm font-bold transition ${role === 'worker' ? 'bg-white text-blue-700 shadow-sm border border-slate-200' : 'text-slate-500'}`}>{getTranslatedText('작업자', lang)}</button>
           <button type="button" onClick={() => { setRole('admin'); setError(''); }} className={`flex-1 py-3 px-4 rounded-md text-sm font-bold transition ${role === 'admin' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500'}`}>관리자</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {role === 'worker' ? (
-            <div><label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label><input type="text" required className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-base" placeholder="성명 입력" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label className="block text-xs font-bold text-slate-600 mb-1 uppercase">Name</label><input type="text" required className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-base" placeholder={getTranslatedText('성명 입력', lang)} value={name} onChange={(e) => setName(e.target.value)} /></div>
           ) : (
             <>
               <div><label className="block text-xs font-bold text-slate-600 mb-1 uppercase">ID</label><input type="text" required className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-base" placeholder="admin" value={adminId} onChange={(e) => setAdminId(e.target.value)} /></div>
@@ -533,7 +613,7 @@ const LoginScreen = ({ onLogin }) => {
   );
 };
 
-const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefectDetail }) => {
+const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefectDetail, lang }) => {
   const formType = getFormType(processType);
   const template = FORM_TEMPLATES[formType];
   const rowLabels = template.rows(vehicle);
@@ -609,9 +689,9 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
         <table className="w-full text-sm border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-black px-2 py-3 text-center w-24 font-bold text-gray-800">구분</th>
+              <th className="border border-black px-2 py-3 text-center w-24 font-bold text-gray-800">{getTranslatedText('구분', lang)}</th>
               {template.columns.map(col => (
-                <th key={col.key} className={`border border-black px-1 py-3 text-center font-bold text-xs whitespace-nowrap ${col.isDefect ? 'text-red-700' : 'text-gray-800'}`}>{col.label}</th>
+                <th key={col.key} className={`border border-black px-1 py-3 text-center font-bold text-xs whitespace-nowrap ${col.isDefect ? 'text-red-700' : 'text-gray-800'}`}>{getTranslatedText(col.label, lang)}</th>
               ))}
             </tr>
           </thead>
@@ -643,7 +723,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
                     <td key={col.key} className="border border-black p-0 h-12 relative group bg-white">
                       {hasImage ? (
                         <div className="w-full h-full flex items-center justify-center">
-                          <button onClick={() => handleCellChange(rowLabel, col.key, '')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1 hover:bg-red-100 hover:text-red-600" title="클릭하여 삭제"><Camera size={14} /> <span>사진등록됨</span></button>
+                          <button onClick={() => handleCellChange(rowLabel, col.key, '')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1 hover:bg-red-100 hover:text-red-600" title="클릭하여 삭제"><Camera size={14} /> <span>{getTranslatedText('사진등록됨', lang)}</span></button>
                         </div>
                       ) : (
                         <input type={col.type === 'number' ? 'number' : 'text'} min={col.type === 'number' ? "0" : undefined} value={cellValue} className={`w-full h-full text-center outline-none bg-transparent text-base ${col.isDefect ? 'text-red-600 font-semibold' : 'text-gray-900'}`} onChange={(e) => handleCellChange(rowLabel, col.key, e.target.value)} />
@@ -663,7 +743,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
 };
 
 // [NEW] Material Lot Form (Restored)
-const MaterialLotForm = ({ onChange, initialData }) => {
+const MaterialLotForm = ({ onChange, initialData, lang }) => {
   const [data, setData] = useState(initialData || {});
   const materials = ['A소재', 'B소재', 'C소재', 'D소재'];
   const columns = [
@@ -688,15 +768,15 @@ const MaterialLotForm = ({ onChange, initialData }) => {
     <div className="mt-6 border border-black bg-white shadow-sm">
       <div className="bg-gray-800 text-white px-4 py-3 border-b border-black font-bold text-sm flex items-center gap-2">
         <Layers size={16} />
-        소재 LOT 관리
+        {getTranslatedText('소재 LOT 관리', lang)}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse min-w-[600px]">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-black px-2 py-3 text-center font-bold w-24">구분</th>
+              <th className="border border-black px-2 py-3 text-center font-bold w-24">{getTranslatedText('구분', lang)}</th>
               {columns.map(col => (
-                <th key={col.key} className="border border-black px-2 py-3 text-center font-bold">{col.label}</th>
+                <th key={col.key} className="border border-black px-2 py-3 text-center font-bold">{getTranslatedText(col.label, lang)}</th>
               ))}
             </tr>
           </thead>
@@ -723,7 +803,7 @@ const MaterialLotForm = ({ onChange, initialData }) => {
   );
 };
 
-const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
+const DimensionTableForm = ({ vehicle, onChange, initialData, lang }) => {
   const [measureData, setMeasureData] = useState(initialData || {});
   // Determine if it's a KGM model (J100, J120, O100) or standard (DN8, etc.)
   const isKgmModel = isKGM(vehicle);
@@ -748,13 +828,13 @@ const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
 
   return (
     <div className="mt-6 border border-black bg-white shadow-sm">
-      <div className="bg-gray-800 text-white px-4 py-3 border-b border-black font-bold text-sm flex items-center gap-2"><Ruler size={16} />중요 치수(길이) 검사현황 ({vehicle})</div>
+      <div className="bg-gray-800 text-white px-4 py-3 border-b border-black font-bold text-sm flex items-center gap-2"><Ruler size={16} />{getTranslatedText('중요 치수(길이) 검사현황', lang)} ({vehicle})</div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse min-w-[600px]">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-black px-2 py-3 text-center font-bold">구분</th>
-              <th className="border border-black px-2 py-3 text-center font-bold">규격 (SPEC)</th>
+              <th className="border border-black px-2 py-3 text-center font-bold">{getTranslatedText('구분', lang)}</th>
+              <th className="border border-black px-2 py-3 text-center font-bold">{getTranslatedText('규격 (SPEC)', lang)}</th>
               {dimensionColumns.map(col => <th key={col} className="border border-black px-2 py-3 text-center font-bold w-16">{col}</th>)}
             </tr>
           </thead>
@@ -961,7 +1041,7 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
   );
 };
 
-const WorkerDashboard = ({ user, db, appId }) => {
+const WorkerDashboard = ({ user, db, appId, lang }) => {
   const [vehicle, setVehicle] = useState('');
   const [processType, setProcessType] = useState('');
   const [notes, setNotes] = useState('');
@@ -1103,20 +1183,20 @@ const WorkerDashboard = ({ user, db, appId }) => {
       <div className="p-4 md:p-8 pb-20 md:pb-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-black pb-2 mb-6 gap-4">
           <div className="flex items-center gap-3">
-             <h1 className="text-2xl md:text-3xl font-extrabold tracking-widest text-black flex items-center gap-3"><FileText className="w-6 h-6 md:w-8 md:h-8" /> 작 업 일 보</h1>
-             {autoSaved && <span className="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded animate-fade-in print:hidden">자동저장됨</span>}
+             <h1 className="text-2xl md:text-3xl font-extrabold tracking-widest text-black flex items-center gap-3"><FileText className="w-6 h-6 md:w-8 md:h-8" /> {getTranslatedText('작 업 일 보', lang)}</h1>
+             {autoSaved && <span className="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded animate-fade-in print:hidden">{getTranslatedText('자동저장됨', lang)}</span>}
           </div>
           <div className="text-right w-full md:w-auto">
             <div className="flex justify-end gap-2 mb-2 print:hidden">
-               <button onClick={() => setShowGuide(true)} className="text-xs flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200 transition font-bold"><HelpCircle size={14} /> 작성 가이드</button>
-               <button onClick={() => setShowStandard(true)} className="text-xs flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition font-bold"><BookOpen size={14} /> 작업 표준서</button>
-               <button onClick={handlePrint} className="text-xs flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition font-bold"><Printer size={14} /> 인쇄</button>
+               <button onClick={() => setShowGuide(true)} className="text-xs flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200 transition font-bold"><HelpCircle size={14} /> {getTranslatedText('작업일보 작성 가이드', lang)}</button>
+               <button onClick={() => setShowStandard(true)} className="text-xs flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition font-bold"><BookOpen size={14} /> {getTranslatedText('작업 표준서', lang)}</button>
+               <button onClick={handlePrint} className="text-xs flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition font-bold"><Printer size={14} /> {getTranslatedText('인쇄', lang)}</button>
             </div>
-            <p className="text-xs font-bold text-gray-600 mb-1 hidden md:block">결 재</p>
+            <p className="text-xs font-bold text-gray-600 mb-1 hidden md:block">{getTranslatedText('결 재', lang)}</p>
             <div className="flex border border-black w-full md:w-auto">
-              <div className="flex-1 md:w-16 border-r border-black"><div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">작 성</div><div className="h-10 md:h-12 flex items-center justify-center text-sm font-bold">{user.name}</div></div>
-              <div className="flex-1 md:w-16 border-r border-black"><div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">검 토</div><div className="h-10 md:h-12"></div></div>
-              <div className="flex-1 md:w-16"><div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">승 인</div><div className="h-10 md:h-12"></div></div>
+              <div className="flex-1 md:w-16 border-r border-black"><div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">{getTranslatedText('작 성', lang)}</div><div className="h-10 md:h-12 flex items-center justify-center text-sm font-bold">{user.name}</div></div>
+              <div className="flex-1 md:w-16 border-r border-black"><div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">{getTranslatedText('검 토', lang)}</div><div className="h-10 md:h-12"></div></div>
+              <div className="flex-1 md:w-16"><div className="bg-gray-100 border-b border-black text-xs text-center py-1 font-bold">{getTranslatedText('승 인', lang)}</div><div className="h-10 md:h-12"></div></div>
             </div>
           </div>
         </div>
@@ -1124,17 +1204,17 @@ const WorkerDashboard = ({ user, db, appId }) => {
         <div className="border border-black mb-6">
           <div className="flex flex-col md:flex-row border-b border-black">
             <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r">
-               <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">작업일자</div>
+               <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">{getTranslatedText('작업일자', lang)}</div>
                <div className="flex-1 flex items-center justify-center font-medium text-sm">{new Date().toLocaleDateString()}</div>
             </div>
             <div className="flex flex-1">
-               <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">작업자</div>
+               <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">{getTranslatedText('작업자', lang)}</div>
                <div className="flex-1 flex items-center justify-center font-medium text-sm">{user.name}</div>
             </div>
           </div>
           <div className="flex flex-col md:flex-row border-b border-black">
              <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r">
-                <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">작업시간</div>
+                <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm py-2">{getTranslatedText('작업시간', lang)}</div>
                 <div className="flex-1 flex items-center justify-center py-2 px-2 bg-blue-50/50">
                    <div className="flex items-center gap-1 text-sm">
                       <span className="font-bold text-gray-700">08:30</span><span className="text-gray-400">~</span>
@@ -1147,20 +1227,20 @@ const WorkerDashboard = ({ user, db, appId }) => {
           </div>
           <div className="flex flex-col md:flex-row">
             <div className="flex flex-1 border-b md:border-b-0 border-black md:border-r h-12">
-              <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm">차종</div>
+              <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm">{getTranslatedText('차종', lang)}</div>
               <div className="flex-1 relative">
                 <select value={vehicle} onChange={(e) => setVehicle(e.target.value)} className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer">
-                  <option value="">[ 선택 ]</option>
+                  <option value="">{getTranslatedText('차종', lang)} 선택</option>
                   {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
                 <Truck className="absolute right-2 top-4 text-gray-400 pointer-events-none w-4 h-4" />
               </div>
             </div>
             <div className="flex flex-1 h-12">
-              <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm">공정</div>
+              <div className="w-24 bg-gray-100 border-r border-black flex items-center justify-center font-bold text-sm">{getTranslatedText('공정', lang)}</div>
               <div className="flex-1 relative">
                 <select value={processType} onChange={(e) => setProcessType(e.target.value)} className="w-full h-full p-2 outline-none appearance-none bg-transparent font-bold text-blue-900 text-center cursor-pointer">
-                  <option value="">[ 선택 ]</option>
+                  <option value="">{getTranslatedText('공정', lang)} 선택</option>
                   {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <Factory className="absolute right-2 top-4 text-gray-400 pointer-events-none w-4 h-4" />
@@ -1173,7 +1253,7 @@ const WorkerDashboard = ({ user, db, appId }) => {
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-gray-800 text-white px-4 py-3 border border-black">
               <span className="font-bold text-sm flex items-center gap-2"><ClipboardList size={16} />{logTitle}</span>
-              <div className="text-xs space-x-3 font-mono flex"><span>합격: {totalQty.toLocaleString()}</span><span className="text-red-300">불량: {totalDefect.toLocaleString()}</span></div>
+              <div className="text-xs space-x-3 font-mono flex"><span>{getTranslatedText('합격', lang)}: {totalQty.toLocaleString()}</span><span className="text-red-300">{getTranslatedText('불량', lang)}: {totalDefect.toLocaleString()}</span></div>
             </div>
 
             <DynamicTableForm 
@@ -1182,34 +1262,35 @@ const WorkerDashboard = ({ user, db, appId }) => {
                onChange={handleFormChange} 
                initialData={formDetails}
                onDefectDetail={handleDefectDetailOpen} // Pass handler
+               lang={lang}
             />
             
             {['프레스', '후가공', '검사'].includes(processType) && (
-              <MaterialLotForm onChange={setMaterialLots} initialData={materialLots} />
+              <MaterialLotForm onChange={setMaterialLots} initialData={materialLots} lang={lang} />
             )}
 
             {processType === '검사' && INSPECTION_SPECS[vehicle] && (
-              <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} initialData={measurements} />
+              <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} initialData={measurements} lang={lang} />
             )}
 
             <div className="border border-black">
-              <div className="bg-gray-100 border-b border-black px-3 py-2 font-bold text-xs text-gray-700">특이사항 및 인수인계</div>
-              <textarea rows="4" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 text-base outline-none resize-none" placeholder="내용을 입력하세요."></textarea>
+              <div className="bg-gray-100 border-b border-black px-3 py-2 font-bold text-xs text-gray-700">{getTranslatedText('특이사항 및 인수인계', lang)}</div>
+              <textarea rows="4" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 text-base outline-none resize-none" placeholder={getTranslatedText('내용을 입력하세요.', lang)}></textarea>
             </div>
 
             <div className="border border-black p-3 bg-gray-50 flex items-center justify-between">
-              <div className="flex items-center gap-2"><Paperclip size={18} className="text-gray-600" /><span className="text-sm font-bold text-gray-700">파일 첨부 (성적서/도면)</span><span className="text-xs text-gray-400">(PDF, 이미지 / 500KB 이하)</span></div>
+              <div className="flex items-center gap-2"><Paperclip size={18} className="text-gray-600" /><span className="text-sm font-bold text-gray-700">{getTranslatedText('파일 첨부 (성적서/도면)', lang)}</span><span className="text-xs text-gray-400">(PDF, 이미지 / 500KB 이하)</span></div>
               <div className="flex items-center gap-2">
                 {attachment ? (
                    <div className="flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold"><FileIcon size={14} /><span className="max-w-[100px] truncate">{attachment.name}</span><button onClick={removeAttachment} className="hover:text-red-500"><X size={14}/></button></div>
                 ) : (
-                  <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 flex items-center gap-1"><span>파일 선택</span><input type="file" accept="image/*, application/pdf" ref={fileInputRef} onChange={handleAttachmentChange} className="hidden" /></label>
+                  <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 flex items-center gap-1"><span>{getTranslatedText('파일 선택', lang)}</span><input type="file" accept="image/*, application/pdf" ref={fileInputRef} onChange={handleAttachmentChange} className="hidden" /></label>
                 )}
               </div>
             </div>
 
             <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t border-gray-300 md:static md:p-0 md:bg-transparent md:border-0 md:flex md:justify-end md:pt-4 z-40 print:hidden">
-              <button onClick={handleSubmit} disabled={isSubmitting} className={`w-full md:w-auto px-8 py-4 md:py-3 font-bold text-white shadow-lg flex items-center justify-center gap-2 border border-black transition active:translate-y-1 rounded-lg md:rounded-none ${isSubmitting ? 'bg-gray-400' : 'bg-blue-800 hover:bg-blue-900'}`}>{isSubmitting ? '저장 중...' : <><Save size={20} />일보 저장</>}</button>
+              <button onClick={handleSubmit} disabled={isSubmitting} className={`w-full md:w-auto px-8 py-4 md:py-3 font-bold text-white shadow-lg flex items-center justify-center gap-2 border border-black transition active:translate-y-1 rounded-lg md:rounded-none ${isSubmitting ? 'bg-gray-400' : 'bg-blue-800 hover:bg-blue-900'}`}>{isSubmitting ? getTranslatedText('저장 중...', lang) : <><Save size={20} />{getTranslatedText('일보 저장', lang)}</>}</button>
             </div>
           </div>
         ) : (
@@ -1217,14 +1298,15 @@ const WorkerDashboard = ({ user, db, appId }) => {
         )}
       </div>
 
-      {showStandard && <StandardModal vehicle={vehicle} process={processType} onClose={() => setShowStandard(false)} />}
-      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+      {showStandard && <StandardModal vehicle={vehicle} process={processType} onClose={() => setShowStandard(false)} lang={lang} />}
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} lang={lang} />}
       {showDefectModal && (
         <InspectionDefectModal 
           rowLabel={defectRowLabel} 
           currentData={currentDefectData}
           onClose={() => setShowDefectModal(false)}
           onApply={handleDefectApply}
+          lang={lang}
         />
       )}
       {submitSuccess && <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full print:hidden"><CheckCircle size={18} className="text-green-400" /><span className="font-bold text-sm">저장 완료</span></div>}
@@ -1458,10 +1540,15 @@ const AdminDashboard = ({ db, appId }) => {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [lang, setLang] = useState('kr');
 
   useEffect(() => { const initAuth = async () => { await signInAnonymously(auth); }; initAuth(); const storedUser = localStorage.getItem('workLogUser'); if (storedUser) setCurrentUser(JSON.parse(storedUser)); setInitializing(false); }, []);
 
-  const handleLogin = (userInfo) => { setCurrentUser(userInfo); localStorage.setItem('workLogUser', JSON.stringify(userInfo)); };
+  const handleLogin = (userInfo) => { 
+    setCurrentUser(userInfo); 
+    setLang(userInfo.lang); 
+    localStorage.setItem('workLogUser', JSON.stringify(userInfo)); 
+  };
   const handleLogout = () => { setCurrentUser(null); localStorage.removeItem('workLogUser'); };
 
   if (initializing) return <div className="flex h-screen items-center justify-center bg-gray-100 text-gray-500 text-sm font-bold">LOADING...</div>;
@@ -1478,7 +1565,7 @@ export default function App() {
             </div>
           </header>
           <main className="flex-1 w-full p-0 md:p-4 print:p-0">
-            {currentUser.role === 'admin' ? <AdminDashboard db={db} appId={appId} /> : <WorkerDashboard user={currentUser} db={db} appId={appId} />}
+            {currentUser.role === 'admin' ? <AdminDashboard db={db} appId={appId} /> : <WorkerDashboard user={currentUser} db={db} appId={appId} lang={lang} />}
           </main>
         </div>
       )}
