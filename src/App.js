@@ -59,70 +59,36 @@ const getLogTitle = (model, process) => {
 };
 
 // --- [NEW] 작성 가이드 이미지 데이터 ---
-// public/images 폴더에 해당 파일명으로 가이드 이미지를 넣어주세요.
 const GUIDE_IMAGES = [
   "/images/guide_1.jpg",
   "/images/guide_2.jpg",
   "/images/guide_3.jpg"
 ];
 
-// --- [수정] 작업 표준서 데이터 (요청하신 데이터 적용됨) ---
+// --- 작업 표준서 데이터 (로컬 이미지) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
-      "/images/DN8_A_SO.jpeg",
-      "/images/DN8_FRT_SO_P.jpeg",
-      "/images/DN8_FRT_SO_Q.jpeg",
-      "/images/DN8_RR_SO_R.jpeg",
-      "/images/DN8_RR_SO_S.jpeg",
-      "/images/DN8_RR_SO_C.jpeg",
-      "/images/DN8_RR_SO_D.jpeg", // 오타 수정 (imgaes -> images)
+      "/images/DN8_A_SO.jpeg", "/images/DN8_FRT_SO_P.jpeg", "/images/DN8_FRT_SO_Q.jpeg",
+      "/images/DN8_RR_SO_R.jpeg", "/images/DN8_RR_SO_S.jpeg", "/images/DN8_RR_SO_C.jpeg", "/images/DN8_RR_SO_D.jpeg",
     ],
-    '프레스': [
-      "/images/DN8_FRT_P.jpeg",
-      "/images/DN8_RR_P.jpeg",
-      "/images/DN8_RR_P_U.jpeg",
-    ],
-    '후가공': [
-      "/images/DN8_FRT_HU.jpeg",
-      "/images/DN8_RR_HU.jpeg",
-    ],
-    '검사': [
-      "/images/DN8_G_P.jpg",
-      "/images/DN8_G_R.jpg",
-      "/images/DN8_O.jpg",
-    ]
+    '프레스': ["/images/DN8_FRT_P.jpeg", "/images/DN8_RR_P.jpeg", "/images/DN8_RR_P_U.jpeg"],
+    '후가공': ["/images/DN8_FRT_HU.jpeg", "/images/DN8_RR_HU.jpeg"],
+    '검사': ["/images/DN8_G_P.jpg", "/images/DN8_G_R.jpg", "/images/DN8_O.jpg"]
   },
   'GN7': {
-    '소재준비': ["/images/GN7_SO.jpeg"],
-    '프레스': ["/images/GN7_P.jpeg"],
-    '후가공': ["/images/GN7_HU.jpeg"],
-    '검사': [], 
+    '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [], 
   },
   'J100': {
-    '소재준비': [
-      "/images/J100_SO.jpg",
-      "/images/J100_SO_B.jpg",
-      "/images/J100_SO_C.jpg",
-    ],
-    '프레스': ["/images/J100_P.jpg"],
-    '후가공': ["/images/J100_HU.jpg"],
-    '검사': ["/images/DN8_O.jpg"], 
+    '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"],
+    '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"], 
   },
   'J120': {
-    '소재준비': ["/images/J120_SO.jpg"],
-    '프레스': ["/images/J120_P.jpg"],
-    '후가공': ["/images/J120_HU.jpg"],
-    '검사': ["/images/DN8_O.jpg"],
+    '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"],
   },
   'O100': {
-    '소재준비': [
-      "/images/O100_SO.jpg",
-      "/images/O100_SO_B1.jpg"
-    ],
-    '프레스': ["/images/O100_P.jpg"],
-    '후가공': ["/images/O100_HU.jpg"],
-    '검사': ["/images/O100_T.jpg"],
+    '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"],
+    '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"],
   }
 };
 
@@ -165,14 +131,18 @@ const FORM_TEMPLATES = {
   },
   press: {
     columns: [
-      // FMB LOT만 카메라 입력 (isPhoto: true)
-      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
+      { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true }, // FMB LOT만 카메라 사용
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
       { key: 'defect_bubble', label: '기포', type: 'number', isDefect: true },
     ],
-    rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
+    rows: (model) => {
+      if (model === 'DN8') {
+        return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'];
+      }
+      return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'];
+    }
   },
   post: {
     columns: [
@@ -241,7 +211,7 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// [NEW] Guide Modal
+// Guide Modal
 const GuideModal = ({ onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
@@ -317,10 +287,14 @@ const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
 
 const DashboardStats = ({ logs }) => {
   const pressProductionData = useMemo(() => {
-    const counts = { 'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0 };
+    const counts = {};
     logs.filter(l => l.processType === '프레스').forEach(log => {
       if (log.details) {
-        Object.keys(counts).forEach(key => { if (log.details[key]) counts[key] += (Number(log.details[key].qty) || 0); });
+        Object.entries(log.details).forEach(([part, data]) => {
+           if(data && data.qty) {
+             counts[part] = (counts[part] || 0) + (Number(data.qty) || 0);
+           }
+        });
       }
     });
     return Object.entries(counts).map(([k, v]) => ({ label: k, value: v }));
@@ -359,16 +333,15 @@ const DashboardStats = ({ logs }) => {
 const PressSummaryTable = ({ logs }) => {
   const summaryData = useMemo(() => {
     const summary = {};
-    VEHICLE_MODELS.forEach(model => { summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 } }; });
+    VEHICLE_MODELS.forEach(model => { summary[model] = {}; });
     logs.forEach(log => {
       if (log.processType === '프레스' && log.details) {
         const model = log.vehicleModel;
         if (!summary[model]) return;
         Object.entries(log.details).forEach(([part, data]) => {
-          if (summary[model][part]) {
-            summary[model][part].prod += (Number(data.qty) || 0);
-            summary[model][part].def += (Number(data.defect_qty) || 0);
-          }
+          if (!summary[model][part]) summary[model][part] = { prod: 0, def: 0 };
+          summary[model][part].prod += (Number(data.qty) || 0);
+          summary[model][part].def += (Number(data.defect_qty) || 0);
         });
       }
     });
@@ -401,14 +374,14 @@ const PressSummaryTable = ({ logs }) => {
                 <React.Fragment key={model}>
                   {Object.entries(parts).map(([part, vals], idx) => (
                     <tr key={model + part} className="border-b hover:bg-gray-50">
-                      {idx === 0 && <td className="px-4 py-3 font-bold border-r bg-gray-50 align-middle" rowSpan={4}>{model}</td>}
+                      {idx === 0 && <td className="px-4 py-3 font-bold border-r bg-gray-50 align-middle" rowSpan={Object.keys(parts).length + 1}>{model}</td>}
                       <td className="px-4 py-2 border-r text-gray-600">{part}</td>
                       <td className="px-4 py-2 text-right border-r font-medium">{vals.prod.toLocaleString()}</td>
                       <td className="px-4 py-2 text-right font-bold text-red-600">{vals.def.toLocaleString()}</td>
                     </tr>
                   ))}
                   <tr className="bg-blue-50 border-b font-semibold">
-                    <td colSpan="2" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
+                    <td colSpan="1" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
                     <td className="px-4 py-2 text-right border-r text-blue-800">{Object.values(parts).reduce((a, b) => a + b.prod, 0).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-red-600">{Object.values(parts).reduce((a, b) => a + b.def, 0).toLocaleString()}</td>
                   </tr>
@@ -568,14 +541,14 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData }) => {
   );
 };
 
-// [NEW] Material Lot Form (Restored)
+// [NEW] Material Lot Form (Restored) - 초물(LH/RH), 중물(LH/RH), 종물(LH/RH)
 const MaterialLotForm = ({ onChange, initialData }) => {
   const [data, setData] = useState(initialData || {});
   const materials = ['A소재', 'B소재', 'C소재', 'D소재'];
   const columns = [
-    { key: 'cho', label: '초물' },
-    { key: 'jung', label: '중물' },
-    { key: 'jong', label: '종물' },
+    { key: 'cho', label: '초물(LH/RH)' },
+    { key: 'jung', label: '중물(LH/RH)' },
+    { key: 'jong', label: '종물(LH/RH)' },
   ];
 
   useEffect(() => {
@@ -1022,7 +995,7 @@ const AdminDashboard = ({ db, appId }) => {
 
   const pressSummary = useMemo(() => {
     const summary = {};
-    VEHICLE_MODELS.forEach(model => { summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 } }; });
+    VEHICLE_MODELS.forEach(model => { summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 }, 'RR END LH': { prod: 0, def: 0 }, 'RR END RH': { prod: 0, def: 0 } }; });
     logs.forEach(log => {
       if (log.processType === '프레스' && log.details) {
         const model = log.vehicleModel;
