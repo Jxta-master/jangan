@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -146,7 +146,7 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'qty', label: '작업수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
       { key: 'spec_start', label: '초물(길이)', type: 'text' },
       { key: 'spec_mid', label: '중물(길이)', type: 'text' },
       { key: 'spec_end', label: '종물(길이)', type: 'text' },
@@ -165,7 +165,8 @@ const FORM_TEMPLATES = {
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
+      // 'defect_bubble' 제거됨 (요청사항 1)
     ],
     rows: (model) => model === 'DN8' ? ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'] : ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
@@ -173,15 +174,15 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
     ],
     rows: () => ['FRT LH', 'FRT RH', 'RR LH', 'RR RH']
   },
   inspection: {
     columns: [
       { key: 'check_qty', label: '검사수량', type: 'number' },
-      { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true, isPopup: true },
-      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
+      { key: 'defect_total', label: '불량수량', type: 'number', isDefect: true, isPopup: true }, // [수정] 팝업 입력
+      { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true }, // [추가] 정품수량
     ],
     rows: (model) => {
       if (model === 'J100') return ['J100 LH', 'J100 RH'];
@@ -238,7 +239,7 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// [수정] Inspection Defect Input Modal with Groups
+// [NEW] Inspection Defect Input Modal
 const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply }) => {
   const [defects, setDefects] = useState(currentData || {});
 
@@ -462,7 +463,7 @@ const PressSummaryTable = ({ logs }) => {
                     </tr>
                   ))}
                   <tr className="bg-blue-50 border-b font-semibold">
-                    <td colSpan="2" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
+                    <td colSpan="1" className="px-4 py-2 text-center border-r text-blue-800">소계</td>
                     <td className="px-4 py-2 text-right border-r text-blue-800">{Object.values(parts).reduce((a, b) => a + b.prod, 0).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-red-600">{Object.values(parts).reduce((a, b) => a + b.def, 0).toLocaleString()}</td>
                   </tr>
@@ -547,7 +548,6 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
       const qty = Number(formData[r]['qty'] || formData[r]['check_qty'] || 0);
       const defect = Number(formData[r]['defect_qty'] || formData[r]['defect_total'] || 0);
       
-      // Update good_qty automatically (if it exists in template)
       if (template.columns.find(c => c.key === 'good_qty')) {
         if (formData[r]['good_qty'] !== qty - defect) {
            setFormData(prev => ({
@@ -621,12 +621,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
                   if (col.isPopup) {
                     return (
                        <td key={col.key} className="border border-black p-0 h-12 relative bg-white">
-                         <button 
-                           onClick={() => handleDefectPopup(rowLabel)}
-                           className="w-full h-full text-center text-red-600 font-bold hover:bg-red-50 flex items-center justify-center gap-1"
-                         >
-                           {cellValue || 0} <ChevronDown size={14}/>
-                         </button>
+                         <button onClick={() => handleDefectPopup(rowLabel)} className="w-full h-full text-center text-red-600 font-bold hover:bg-red-50 flex items-center justify-center gap-1">{cellValue || 0} <ChevronDown size={14}/></button>
                        </td>
                     );
                   }
@@ -634,9 +629,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
                   if (col.isReadOnly) {
                     return (
                        <td key={col.key} className="border border-black p-0 h-12 bg-gray-100">
-                         <div className="w-full h-full flex items-center justify-center font-bold text-blue-800">
-                           {cellValue || 0}
-                         </div>
+                         <div className="w-full h-full flex items-center justify-center font-bold text-blue-800">{cellValue || 0}</div>
                        </td>
                     );
                   }
@@ -727,8 +720,11 @@ const MaterialLotForm = ({ onChange, initialData }) => {
 
 const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
   const [measureData, setMeasureData] = useState(initialData || {});
+  // Determine if it's a KGM model (J100, J120, O100) or standard (DN8, etc.)
   const isKgmModel = isKGM(vehicle);
   const specs = INSPECTION_SPECS[vehicle] || [];
+
+  // Define columns based on vehicle type
   const dimensionColumns = isKgmModel 
     ? ['초', '중', '종'] 
     : ['x1', 'x2', 'x3', 'x4', 'x5'];
@@ -774,6 +770,133 @@ const DimensionTableForm = ({ vehicle, onChange, initialData }) => {
       </div>
     </div>
   );
+};
+
+// [NEW] Admin Add Log Modal
+const AdminAddLogModal = ({ db, appId, onClose }) => {
+    const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+    const [workerName, setWorkerName] = useState('');
+    const [vehicle, setVehicle] = useState('');
+    const [processType, setProcessType] = useState('');
+    const [notes, setNotes] = useState('');
+    const [formDetails, setFormDetails] = useState({});
+    const [measurements, setMeasurements] = useState({});
+    const [materialLots, setMaterialLots] = useState({});
+    const [totalQty, setTotalQty] = useState(0);
+    const [totalDefect, setTotalDefect] = useState(0);
+    const [endHour, setEndHour] = useState('17');
+    const [endMinute, setEndMinute] = useState('30');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleFormChange = (details, qty, defect) => {
+        setFormDetails(details);
+        setTotalQty(qty);
+        setTotalDefect(defect);
+    };
+
+    const handleSubmit = async () => {
+        if (!vehicle || !processType || !workerName) return alert("필수 항목을 입력해주세요.");
+        setIsSubmitting(true);
+        try {
+            const submitDate = new Date(date);
+            submitDate.setHours(new Date().getHours()); 
+            
+            const workTime = `08:30 ~ ${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+
+            await addDoc(collection(db, 'work_logs'), {
+                appId,
+                workerName,
+                vehicleModel: vehicle,
+                processType,
+                logTitle: getLogTitle(vehicle, processType),
+                details: formDetails,
+                measurements,
+                materialLots,
+                productionQty: totalQty,
+                defectQty: totalDefect,
+                notes,
+                workTime,
+                timestamp: submitDate
+            });
+            alert("추가되었습니다.");
+            onClose();
+        } catch (err) {
+            console.error(err);
+            alert("오류가 발생했습니다.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b bg-blue-50 rounded-t-lg">
+                    <h3 className="font-bold text-lg text-blue-800 flex items-center gap-2"><Plus size={20} /> 작업일보 추가 (관리자)</h3>
+                    <button onClick={onClose}><X size={24} className="text-gray-500 hover:text-gray-800" /></button>
+                </div>
+                <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div>
+                            <label className="block text-sm font-bold mb-1 text-gray-700">날짜 선택</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1 text-gray-700">작업자명</label>
+                            <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="작업자 이름 입력" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1 text-gray-700">차종</label>
+                            <select value={vehicle} onChange={e => setVehicle(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">차종 선택</option>
+                                {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1 text-gray-700">공정</label>
+                            <select value={processType} onChange={e => setProcessType(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">공정 선택</option>
+                                {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    {vehicle && processType ? (
+                        <>
+                            <div className="bg-blue-50 p-3 rounded text-center font-bold text-blue-800 border border-blue-100">
+                                {getLogTitle(vehicle, processType)} 작성 중...
+                            </div>
+                            <DynamicTableForm vehicle={vehicle} processType={processType} onChange={handleFormChange} />
+                            
+                            {['프레스', '후가공', '검사'].includes(processType) && (
+                                <MaterialLotForm onChange={setMaterialLots} />
+                            )}
+                            
+                            {processType === '검사' && INSPECTION_SPECS[vehicle] && (
+                                <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} />
+                            )}
+                            
+                            <div>
+                                <label className="block text-sm font-bold mb-1 text-gray-700">특이사항</label>
+                                <textarea rows="3" value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="특이사항 입력"></textarea>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                            <FileText size={48} className="mx-auto mb-2 opacity-20" />
+                            <p>차종과 공정을 선택하면 입력 양식이 나타납니다.</p>
+                        </div>
+                    )}
+                </div>
+                <div className="p-4 border-t flex justify-end gap-2 bg-gray-50 rounded-b-lg">
+                    <button onClick={onClose} className="px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-bold transition">취소</button>
+                    <button onClick={handleSubmit} disabled={isSubmitting} className="px-8 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow transition flex items-center gap-2">
+                        {isSubmitting ? '저장 중...' : <><Save size={18} /> 저장</>}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const EditLogModal = ({ log, onClose, onUpdate }) => {
@@ -857,7 +980,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
   const [showDefectModal, setShowDefectModal] = useState(false);
   const [defectRowLabel, setDefectRowLabel] = useState('');
   const [currentDefectData, setCurrentDefectData] = useState({});
-
   const logTitle = useMemo(() => getLogTitle(vehicle, processType), [vehicle, processType]);
 
   useEffect(() => {
@@ -906,7 +1028,6 @@ const WorkerDashboard = ({ user, db, appId }) => {
   };
   
   const handleDefectApply = (total, detailData) => {
-    // Update formDetails with total defect and details
     setFormDetails(prev => ({
       ...prev,
       [defectRowLabel]: {
@@ -1116,6 +1237,7 @@ const AdminDashboard = ({ db, appId }) => {
   const [filterProcess, setFilterProcess] = useState('All');
   const [filterWorker, setFilterWorker] = useState('All');
   const [showPressSummary, setShowPressSummary] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false); // [NEW]
 
   useEffect(() => {
     const [year, month] = filterDate.split('-');
@@ -1270,6 +1392,7 @@ const AdminDashboard = ({ db, appId }) => {
           <select value={filterWorker} onChange={(e) => setFilterWorker(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 작업자</option>{uniqueWorkers.map(w => w !== 'All' && <option key={w} value={w}>{w}</option>)}</select>
         </div>
         <div className="flex gap-2">
+           <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><Plus size={16} /> 추가작성</button>
            <button onClick={() => setShowPressSummary(!showPressSummary)} className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded ${showPressSummary ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}><List size={16} /> 프레스 요약</button>
            <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><FileSpreadsheet size={16} /> Excel 다운로드</button>
         </div>
@@ -1319,6 +1442,7 @@ const AdminDashboard = ({ db, appId }) => {
         )}
       </div>
 
+      {showAddModal && <AdminAddLogModal db={db} appId={appId} onClose={() => setShowAddModal(false)} />}
       {editingLog && <EditLogModal log={editingLog} onClose={() => setEditingLog(null)} onUpdate={handleUpdate} />}
       {viewImage && <ImageViewerModal imageUrl={viewImage} onClose={() => setViewImage(null)} />}
     </div>
