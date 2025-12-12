@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator, Wrench
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -87,6 +87,7 @@ const TRANSLATIONS = {
   'Lot No': { en: 'Lot No', ru: 'Партия', th: 'ล็อต', vn: 'Số Lo' },
   'FMB LOT': { en: 'FMB LOT', ru: 'FMB LOT', th: 'FMB LOT', vn: 'FMB LOT' },
   '수지 LOT (직/둔)': { en: 'Resin LOT', ru: 'Смола LOT', th: 'เรซิน LOT', vn: 'Resin LOT' },
+  '호기(직/둔)': { en: 'Mold/Type', ru: 'Тип/№', th: 'แม่พิมพ์', vn: 'Khuôn/Loại' },
   '기포': { en: 'Bubble', ru: 'Пузырь', th: 'ฟองอากาศ', vn: 'Bọt khí' },
   '검사수량': { en: 'Insp Qty', ru: 'Кол-во пров.', th: 'จำนวนตรวจ', vn: 'SL Kiểm tra' },
   '소재 LOT 관리': { en: 'Material LOT', ru: 'Материал LOT', th: 'จัดการล็อตวัสดุ', vn: 'Quản lý Lo vật liệu' },
@@ -231,6 +232,7 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
+      { key: 'mold_info', label: '호기(직/둔)', type: 'text' }, 
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
       { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
@@ -304,6 +306,7 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
+// [NEW] Inspection Defect Input Modal
 const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply, lang }) => {
   const [defects, setDefects] = useState(currentData || {});
 
@@ -414,6 +417,58 @@ const StandardModal = ({ vehicle, process, onClose, lang }) => {
   );
 };
 
+// [NEW] Mold Management Component
+const MoldManagement = ({ logs, lang }) => {
+  const moldData = useMemo(() => {
+    const summary = {};
+    logs.forEach(log => {
+      if (log.processType === '프레스' && log.details) {
+        const model = log.vehicleModel;
+        Object.entries(log.details).forEach(([part, data]) => {
+          const moldInfo = data.mold_info || '미지정';
+          if (!summary[model]) summary[model] = {};
+          if (!summary[model][part]) summary[model][part] = {};
+          if (!summary[model][part][moldInfo]) summary[model][part][moldInfo] = 0;
+          summary[model][part][moldInfo] += (Number(data.qty) || 0);
+        });
+      }
+    });
+    return summary;
+  }, [logs]);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-4"><Wrench className="text-blue-600" /> 금형 타수 관리 (누적 생산량)</h2>
+        {Object.keys(moldData).length === 0 ? (
+          <div className="text-center py-12 text-gray-400">프레스 작업 데이터가 없습니다.</div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(moldData).map(([model, parts]) => (
+              <div key={model} className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-100 px-4 py-2 font-bold text-lg border-b flex justify-between"><span>{model}</span></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y md:divide-y-0 md:divide-x">
+                  {Object.entries(parts).map(([part, molds]) => (
+                    <div key={part} className="p-4">
+                      <h4 className="font-bold text-gray-700 mb-3 text-center border-b pb-2">{part}</h4>
+                      <ul className="space-y-2">
+                        {Object.entries(molds).map(([mold, qty]) => (
+                          <li key={mold} className="flex justify-between items-center text-sm"><span className="bg-blue-50 text-blue-800 px-2 py-1 rounded text-xs font-bold">{mold}</span><span className="font-mono font-bold text-gray-900">{qty.toLocaleString()} 타</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
 const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
   if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-gray-400 text-sm">데이터 없음</div>;
   const maxVal = Math.max(...data.map(d => d.value), 1);
@@ -484,10 +539,9 @@ const PressSummaryTable = ({ logs }) => {
         const model = log.vehicleModel;
         if (!summary[model]) return;
         Object.entries(log.details).forEach(([part, data]) => {
-          if (summary[model][part]) {
-            summary[model][part].prod += (Number(data.qty) || 0);
-            summary[model][part].def += (Number(data.defect_qty) || 0);
-          }
+          if (!summary[model][part]) summary[model][part] = { prod: 0, def: 0 };
+          summary[model][part].prod += (Number(data.qty) || 0);
+          summary[model][part].def += (Number(data.defect_qty) || 0);
         });
       }
     });
@@ -548,7 +602,7 @@ const PressSummaryTable = ({ logs }) => {
 };
 
 const LoginScreen = ({ onLogin }) => {
-  const ADMIN_PASSWORD = 'jangan123'; 
+  const ADMIN_PASSWORD = '1234abc'; 
   const [role, setRole] = useState('worker');
   const [name, setName] = useState('');
   const [adminId, setAdminId] = useState('');
@@ -680,10 +734,11 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang })
   const handleDefectApply = (total, detailData) => {
      const newData = { ...formData };
      if (!newData[defectRowLabel]) newData[defectRowLabel] = {};
-     newData[defectRowLabel]['defect_total'] = total;
-     newData[defectRowLabel]['defect_qty'] = total;
+     newData[defectRowLabel]['defect_total'] = total; // For inspection
+     newData[defectRowLabel]['defect_qty'] = total; // For others if needed
      newData[defectRowLabel]['defect_details'] = detailData;
      
+     // Recalc good_qty
      const qty = newData[defectRowLabel]['qty'] || newData[defectRowLabel]['check_qty'] || 0;
      if(template.columns.find(c=>c.key==='good_qty')) {
         newData[defectRowLabel]['good_qty'] = Math.max(0, qty - total);
@@ -1338,18 +1393,23 @@ const AdminDashboard = ({ db, appId, lang }) => {
   const [filterWorker, setFilterWorker] = useState('All');
   const [showPressSummary, setShowPressSummary] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('logs'); // logs | mold
 
   useEffect(() => {
-    const [year, month] = filterDate.split('-');
-    const startOfMonth = new Date(year, month - 1, 1);
-    const endOfMonth = new Date(year, month, 1);
-
-    const q = query(
-      collection(db, 'work_logs'),
-      where('timestamp', '>=', startOfMonth),
-      where('timestamp', '<', endOfMonth),
-      orderBy('timestamp', 'desc')
-    );
+    let q;
+    if (activeTab === 'mold') {
+       q = query(collection(db, 'work_logs'), orderBy('timestamp', 'desc'));
+    } else {
+       const [year, month] = filterDate.split('-');
+       const startOfMonth = new Date(year, month - 1, 1);
+       const endOfMonth = new Date(year, month, 1);
+       q = query(
+         collection(db, 'work_logs'),
+         where('timestamp', '>=', startOfMonth),
+         where('timestamp', '<', endOfMonth),
+         orderBy('timestamp', 'desc')
+       );
+    }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1359,7 +1419,7 @@ const AdminDashboard = ({ db, appId, lang }) => {
 
     setVisibleCount(20);
     return () => unsubscribe();
-  }, [db, filterDate]);
+  }, [db, filterDate, activeTab]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
@@ -1483,64 +1543,87 @@ const AdminDashboard = ({ db, appId, lang }) => {
   return (
     <div className="space-y-6">
       <DashboardStats logs={filteredLogs} />
-      <div className="bg-white p-4 md:p-6 border-b md:border border-gray-300 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="w-full md:w-auto"><h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Settings className="w-5 h-5" /> 관리자 모드</h2><p className="text-gray-500 text-xs mt-1">데이터 조회 및 엑셀 다운로드</p></div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg"><Filter size={16} className="text-gray-500" /><input type="month" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer" /></div>
-          <select value={filterVehicle} onChange={(e) => setFilterVehicle(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 차종</option>{VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}</select>
-          <select value={filterProcess} onChange={(e) => setFilterProcess(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 공정</option>{PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select>
-          <select value={filterWorker} onChange={(e) => setFilterWorker(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 작업자</option>{uniqueWorkers.map(w => w !== 'All' && <option key={w} value={w}>{w}</option>)}</select>
-        </div>
-        <div className="flex gap-2">
-           <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><Plus size={16} /> 누락분 추가</button>
-           <button onClick={() => setShowPressSummary(!showPressSummary)} className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded ${showPressSummary ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}><List size={16} /> 프레스 요약</button>
-           <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><FileSpreadsheet size={16} /> Excel 다운로드</button>
-        </div>
-      </div>
-      
-      {showPressSummary && <PressSummaryTable logs={logs} />}
 
-      <div className="bg-white border-t md:border border-gray-300 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-700">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-300">
-              <tr>
-                <th className="px-4 py-3 border-r whitespace-nowrap">일시</th><th className="px-4 py-3 border-r whitespace-nowrap">작업자</th><th className="px-4 py-3 border-r whitespace-nowrap">내역</th><th className="px-4 py-3 border-r whitespace-nowrap">작업시간</th><th className="px-4 py-3 border-r min-w-[150px]">상세 수량</th><th className="px-4 py-3 border-r text-right text-red-600 whitespace-nowrap">불량</th><th className="px-4 py-3 border-r min-w-[150px]">특이사항</th><th className="px-4 py-3 text-center whitespace-nowrap">관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
-              ) : visibleLogs.length === 0 ? (
-                <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">조건에 맞는 데이터가 없습니다.</td></tr>
-              ) : (
-                visibleLogs.map((log) => (
-                  <tr key={log.id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 border-r align-top whitespace-nowrap">{log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000).toLocaleDateString() : '-'}</td>
-                    <td className="px-4 py-3 border-r font-bold align-top whitespace-nowrap">{log.workerName}</td>
-                    <td className="px-4 py-3 border-r align-top"><span className="font-bold text-blue-800">[{log.vehicleModel}]</span> {log.logTitle}</td>
-                    <td className="px-4 py-3 border-r align-top whitespace-nowrap text-xs text-gray-600 bg-gray-50">{log.workTime || '-'}</td>
-                    <td className="px-4 py-3 border-r align-top bg-gray-50">{renderDetailedQty(log)}</td>
-                    <td className="px-4 py-3 border-r text-right text-red-600 font-bold align-top">{log.defectQty > 0 ? log.defectQty : '-'}</td>
-                    <td className="px-4 py-3 border-r align-top max-w-xs truncate text-gray-500">{log.notes}</td>
-                    <td className="px-4 py-3 align-top text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => setEditingLog(log)} className="text-blue-500 hover:text-blue-700 p-2 rounded hover:bg-blue-50 transition" title="수정"><Pencil size={18} /></button>
-                        <button onClick={() => handleDelete(log.id)} className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50 transition" title="삭제"><Trash2 size={18} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {filteredLogs.length > visibleCount && (
-          <div className="p-4 text-center border-t border-gray-200">
-             <button onClick={handleLoadMore} className="px-6 py-2 bg-gray-100 text-gray-600 font-bold rounded-full hover:bg-gray-200 transition flex items-center gap-2 mx-auto"><ChevronDown size={18} /> 더 보기 ({filteredLogs.length - visibleCount}개 남음)</button>
-          </div>
-        )}
+      {/* Admin Tabs */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-300 flex justify-center gap-4">
+         <button 
+           onClick={() => setActiveTab('logs')}
+           className={`px-6 py-2 rounded-full font-bold transition ${activeTab === 'logs' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+         >
+           작업일보 관리
+         </button>
+         <button 
+           onClick={() => setActiveTab('mold')}
+           className={`px-6 py-2 rounded-full font-bold transition ${activeTab === 'mold' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+         >
+           금형 타수 관리
+         </button>
       </div>
+
+      {activeTab === 'logs' ? (
+        <>
+          <div className="bg-white p-4 md:p-6 border-b md:border border-gray-300 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="w-full md:w-auto"><h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Settings className="w-5 h-5" /> 관리자 모드</h2><p className="text-gray-500 text-xs mt-1">데이터 조회 및 엑셀 다운로드</p></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg"><Filter size={16} className="text-gray-500" /><input type="month" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer" /></div>
+              <select value={filterVehicle} onChange={(e) => setFilterVehicle(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 차종</option>{VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}</select>
+              <select value={filterProcess} onChange={(e) => setFilterProcess(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 공정</option>{PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select>
+              <select value={filterWorker} onChange={(e) => setFilterWorker(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="All">전체 작업자</option>{uniqueWorkers.map(w => w !== 'All' && <option key={w} value={w}>{w}</option>)}</select>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><Plus size={16} /> 누락분 추가</button>
+              <button onClick={() => setShowPressSummary(!showPressSummary)} className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded ${showPressSummary ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}><List size={16} /> 프레스 요약</button>
+              <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><FileSpreadsheet size={16} /> Excel 다운로드</button>
+            </div>
+          </div>
+          
+          {showPressSummary && <PressSummaryTable logs={logs} />}
+
+          <div className="bg-white border-t md:border border-gray-300 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-gray-700">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-300">
+                  <tr>
+                    <th className="px-4 py-3 border-r whitespace-nowrap">일시</th><th className="px-4 py-3 border-r whitespace-nowrap">작업자</th><th className="px-4 py-3 border-r whitespace-nowrap">내역</th><th className="px-4 py-3 border-r whitespace-nowrap">작업시간</th><th className="px-4 py-3 border-r min-w-[150px]">상세 수량</th><th className="px-4 py-3 border-r text-right text-red-600 whitespace-nowrap">불량</th><th className="px-4 py-3 border-r min-w-[150px]">특이사항</th><th className="px-4 py-3 text-center whitespace-nowrap">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">로딩 중...</td></tr>
+                  ) : visibleLogs.length === 0 ? (
+                    <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">조건에 맞는 데이터가 없습니다.</td></tr>
+                  ) : (
+                    visibleLogs.map((log) => (
+                      <tr key={log.id} className="border-b border-gray-200 hover:bg-gray-50">
+                        <td className="px-4 py-3 border-r align-top whitespace-nowrap">{log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000).toLocaleDateString() : '-'}</td>
+                        <td className="px-4 py-3 border-r font-bold align-top whitespace-nowrap">{log.workerName}</td>
+                        <td className="px-4 py-3 border-r align-top"><span className="font-bold text-blue-800">[{log.vehicleModel}]</span> {log.logTitle}</td>
+                        <td className="px-4 py-3 border-r align-top whitespace-nowrap text-xs text-gray-600 bg-gray-50">{log.workTime || '-'}</td>
+                        <td className="px-4 py-3 border-r align-top bg-gray-50">{renderDetailedQty(log)}</td>
+                        <td className="px-4 py-3 border-r text-right text-red-600 font-bold align-top">{log.defectQty > 0 ? log.defectQty : '-'}</td>
+                        <td className="px-4 py-3 border-r align-top max-w-xs truncate text-gray-500">{log.notes}</td>
+                        <td className="px-4 py-3 align-top text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => setEditingLog(log)} className="text-blue-500 hover:text-blue-700 p-2 rounded hover:bg-blue-50 transition" title="수정"><Pencil size={18} /></button>
+                            <button onClick={() => handleDelete(log.id)} className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50 transition" title="삭제"><Trash2 size={18} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {filteredLogs.length > visibleCount && (
+              <div className="p-4 text-center border-t border-gray-200">
+                <button onClick={handleLoadMore} className="px-6 py-2 bg-gray-100 text-gray-600 font-bold rounded-full hover:bg-gray-200 transition flex items-center gap-2 mx-auto"><ChevronDown size={18} /> 더 보기 ({filteredLogs.length - visibleCount}개 남음)</button>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <MoldManagement logs={logs} lang={lang} />
+      )}
 
       {showAddModal && <AdminAddLogModal db={db} appId={appId} onClose={() => setShowAddModal(false)} lang={lang} />}
       {editingLog && <EditLogModal log={editingLog} onClose={() => setEditingLog(null)} onUpdate={handleUpdate} lang={lang} />}
