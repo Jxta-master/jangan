@@ -76,8 +76,6 @@ const TRANSLATIONS = {
   '저장 중...': { en: 'Saving...', ru: 'Сохранение...', th: 'กำลังบันทึก...', vn: 'Đang lưu...' },
   '자동저장됨': { en: 'Auto-saved', ru: 'Автосохранение', th: 'บันทึกอัตโนมัติ', vn: 'Đã lưu tự động' },
   '사진등록됨': { en: 'Photo Added', ru: 'Фото добавлено', th: 'เพิ่มรูปแล้ว', vn: 'Đã thêm ảnh' },
-  
-  // Columns & Fields
   '구분': { en: 'Div', ru: 'Раздел', th: 'ประเภท', vn: 'Phân loại' },
   '작업수량': { en: 'Work Qty', ru: 'Кол-во', th: 'จำนวนงาน', vn: 'SL Làm việc' },
   '생산수량': { en: 'Prod Qty', ru: 'Продукция', th: 'จำนวนผลิต', vn: 'SL Sản xuất' },
@@ -97,8 +95,6 @@ const TRANSLATIONS = {
   '종물(LH/RH)': { en: 'Final', ru: 'Конец', th: 'ท้าย', vn: 'Cuối' },
   '중요 치수(길이) 검사현황': { en: 'Dimension Check', ru: 'Проверка размеров', th: 'ตรวจสอบขนาด', vn: 'Kiểm tra kích thước' },
   '규격 (SPEC)': { en: 'SPEC', ru: 'Спец.', th: 'สเปค', vn: 'Quy cách' },
-
-  // Defects
   '불량 상세 입력': { en: 'Defect Details', ru: 'Детали брака', th: 'รายละเอียดของเสีย', vn: 'Chi tiết lỗi' },
   '소재 불량': { en: 'Material Defect', ru: 'Дефект мат.', th: 'วัสดุเสีย', vn: 'Lỗi vật liệu' },
   '조인트 불량': { en: 'Joint Defect', ru: 'Дефект соед.', th: 'ข้อต่อเสีย', vn: 'Lỗi mối nối' },
@@ -106,8 +102,6 @@ const TRANSLATIONS = {
   '총 불량 합계': { en: 'Total Defects', ru: 'Всего брака', th: 'รวมของเสีย', vn: 'Tổng lỗi' },
   '취소': { en: 'Cancel', ru: 'Отмена', th: 'ยกเลิก', vn: 'Hủy' },
   '적용': { en: 'Apply', ru: 'Применить', th: 'ใช้', vn: 'Áp dụng' },
-  
-  // Defect Items
   "스코치 'A'": { en: "Scorch A", ru: "Ожог A", th: "ไหม้ A", vn: "Cháy A" },
   "스코치 'B'": { en: "Scorch B", ru: "Ожог B", th: "ไหม้ B", vn: "Cháy B" },
   "스코치 'C'": { en: "Scorch C", ru: "Ожог C", th: "ไหม้ C", vn: "Cháy C" },
@@ -141,7 +135,7 @@ const getTranslatedText = (text, lang) => {
   return translation ? `${text} (${translation})` : text;
 };
 
-// [수정] 검사 공정 불량 유형 상세 리스트
+// --- DATA ---
 const INSPECTION_DEFECT_GROUPS = [
   {
     category: '소재 불량',
@@ -186,14 +180,12 @@ const INSPECTION_DEFECT_GROUPS = [
   }
 ];
 
-// --- 작성 가이드 이미지 데이터 ---
 const GUIDE_IMAGES = [
   "/images/guide_1.jpg",
   "/images/guide_2.jpg",
   "/images/guide_3.jpg"
 ];
 
-// --- 작업 표준서 데이터 (로컬 이미지) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -204,42 +196,19 @@ const PROCESS_STANDARDS = {
     '후가공': ["/images/DN8_FRT_HU.jpeg", "/images/DN8_RR_HU.jpeg"],
     '검사': ["/images/DN8_G_P.jpg", "/images/DN8_G_R.jpg", "/images/DN8_O.jpg"]
   },
-  'GN7': {
-    '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [], 
-  },
-  'J100': {
-    '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"],
-    '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"], 
-  },
-  'J120': {
-    '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"],
-  },
-  'O100': {
-    '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"],
-    '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"],
-  }
+  'GN7': { '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [] },
+  'J100': { '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"], '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"] },
+  'J120': { '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"] },
+  'O100': { '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"], '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"] }
 };
 
-// --- Inspection Specs ---
 const INSPECTION_SPECS = {
-  'DN8': [
-    { part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' },
-    { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' },
-    { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' },
-    { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' },
-  ],
-  'J100': [
-    { part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' },
-  ],
-  'J120': [
-    { part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' },
-  ],
-  'O100': [
-    { part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' },
-  ]
+  'DN8': [{ part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' }, { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' }, { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' }, { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' }],
+  'J100': [{ part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' }],
+  'J120': [{ part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' }],
+  'O100': [{ part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' }]
 };
 
-// --- Form Templates ---
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -291,6 +260,14 @@ const FORM_TEMPLATES = {
   }
 };
 
+const getFormType = (process) => {
+  if (process.includes('소재')) return 'material';
+  if (process.includes('프레스')) return 'press';
+  if (process.includes('후가공')) return 'post';
+  if (process.includes('검사')) return 'inspection';
+  return 'material';
+};
+
 // --- Components ---
 
 const compressImage = (file) => {
@@ -327,7 +304,6 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// [NEW] Inspection Defect Input Modal
 const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply, lang }) => {
   const [defects, setDefects] = useState(currentData || {});
 
@@ -508,9 +484,10 @@ const PressSummaryTable = ({ logs }) => {
         const model = log.vehicleModel;
         if (!summary[model]) return;
         Object.entries(log.details).forEach(([part, data]) => {
-          if (!summary[model][part]) summary[model][part] = { prod: 0, def: 0 };
-          summary[model][part].prod += (Number(data.qty) || 0);
-          summary[model][part].def += (Number(data.defect_qty) || 0);
+          if (summary[model][part]) {
+            summary[model][part].prod += (Number(data.qty) || 0);
+            summary[model][part].def += (Number(data.defect_qty) || 0);
+          }
         });
       }
     });
@@ -639,7 +616,7 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang })
   const fileInputRef = useRef(null);
   const [activeCell, setActiveCell] = useState({ row: null, col: null });
   
-  // Defect Modal State (moved here)
+  // Defect Modal State (Integrated)
   const [showDefectModal, setShowDefectModal] = useState(false);
   const [defectRowLabel, setDefectRowLabel] = useState('');
   const [currentDefectData, setCurrentDefectData] = useState({});
@@ -655,15 +632,10 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang })
       const qty = Number(formData[r]['qty'] || formData[r]['check_qty'] || 0);
       const defect = Number(formData[r]['defect_qty'] || formData[r]['defect_total'] || 0);
       
-      // Auto calc good_qty
       if (template.columns.find(c => c.key === 'good_qty')) {
         const good = Math.max(0, qty - defect);
         if (formData[r]['good_qty'] !== good) {
-           // Direct mutation to avoid loop, or strict check
-           // Using functional update carefully
-           // Actually, calling setFormData here might loop if not careful.
-           // Better to calculate good_qty on render or only when saving.
-           // But let's try to update state if it differs.
+             formData[r]['good_qty'] = good;
         }
       }
 
@@ -708,11 +680,10 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang })
   const handleDefectApply = (total, detailData) => {
      const newData = { ...formData };
      if (!newData[defectRowLabel]) newData[defectRowLabel] = {};
-     newData[defectRowLabel]['defect_total'] = total; // For inspection
-     newData[defectRowLabel]['defect_qty'] = total; // For others if needed
+     newData[defectRowLabel]['defect_total'] = total;
+     newData[defectRowLabel]['defect_qty'] = total;
      newData[defectRowLabel]['defect_details'] = detailData;
      
-     // Recalc good_qty
      const qty = newData[defectRowLabel]['qty'] || newData[defectRowLabel]['check_qty'] || 0;
      if(template.columns.find(c=>c.key==='good_qty')) {
         newData[defectRowLabel]['good_qty'] = Math.max(0, qty - total);
@@ -920,7 +891,7 @@ const DimensionTableForm = ({ vehicle, onChange, initialData, lang }) => {
 };
 
 // [NEW] Admin Add Log Modal
-const AdminAddLogModal = ({ db, appId, onClose }) => {
+const AdminAddLogModal = ({ db, appId, onClose, lang }) => {
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
     const [workerName, setWorkerName] = useState('');
     const [vehicle, setVehicle] = useState('');
@@ -1014,14 +985,19 @@ const AdminAddLogModal = ({ db, appId, onClose }) => {
                             <div className="bg-blue-50 p-3 rounded text-center font-bold text-blue-800 border border-blue-100">
                                 {getLogTitle(vehicle, processType)} 작성 중...
                             </div>
-                            <DynamicTableForm vehicle={vehicle} processType={processType} onChange={handleFormChange} />
+                            <DynamicTableForm 
+                               vehicle={vehicle} 
+                               processType={processType} 
+                               onChange={handleFormChange} 
+                               lang={lang} 
+                            />
                             
                             {['프레스', '후가공', '검사'].includes(processType) && (
-                                <MaterialLotForm onChange={setMaterialLots} />
+                                <MaterialLotForm onChange={setMaterialLots} lang={lang} />
                             )}
                             
                             {processType === '검사' && INSPECTION_SPECS[vehicle] && (
-                                <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} />
+                                <DimensionTableForm vehicle={vehicle} onChange={setMeasurements} lang={lang} />
                             )}
                             
                             <div>
@@ -1047,7 +1023,7 @@ const AdminAddLogModal = ({ db, appId, onClose }) => {
     );
 };
 
-const EditLogModal = ({ log, onClose, onUpdate }) => {
+const EditLogModal = ({ log, onClose, onUpdate, lang }) => {
   const [notes, setNotes] = useState(log.notes || '');
   const [formDetails, setFormDetails] = useState(log.details || {});
   const [measurements, setMeasurements] = useState(log.measurements || {});
@@ -1086,12 +1062,18 @@ const EditLogModal = ({ log, onClose, onUpdate }) => {
         </div>
         <div className="p-4 md:p-6 space-y-6">
           <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm text-yellow-800">{log.vehicleModel} / {log.processType}</div>
-          <DynamicTableForm vehicle={log.vehicleModel} processType={log.processType} onChange={handleFormChange} initialData={log.details} />
+          <DynamicTableForm 
+             vehicle={log.vehicleModel} 
+             processType={log.processType} 
+             onChange={handleFormChange} 
+             initialData={formDetails} 
+             lang={lang}
+          />
           {['프레스', '후가공', '검사'].includes(log.processType) && (
-            <MaterialLotForm onChange={setMaterialLots} initialData={log.materialLots} />
+            <MaterialLotForm onChange={setMaterialLots} initialData={log.materialLots} lang={lang} />
           )}
           {log.processType === '검사' && INSPECTION_SPECS[log.vehicleModel] && (
-            <DimensionTableForm vehicle={log.vehicleModel} onChange={setMeasurements} initialData={log.measurements} />
+            <DimensionTableForm vehicle={log.vehicleModel} onChange={setMeasurements} initialData={log.measurements} lang={lang} />
           )}
           <div><label className="block text-sm font-bold text-gray-700 mb-2">특이사항</label><textarea rows="3" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea></div>
         </div>
@@ -1344,7 +1326,7 @@ const WorkerDashboard = ({ user, db, appId, lang }) => {
   );
 };
 
-const AdminDashboard = ({ db, appId }) => {
+const AdminDashboard = ({ db, appId, lang }) => {
   const [logs, setLogs] = useState([]);
   const [visibleCount, setVisibleCount] = useState(20);
   const [loading, setLoading] = useState(true);
@@ -1560,8 +1542,8 @@ const AdminDashboard = ({ db, appId }) => {
         )}
       </div>
 
-      {showAddModal && <AdminAddLogModal db={db} appId={appId} onClose={() => setShowAddModal(false)} />}
-      {editingLog && <EditLogModal log={editingLog} onClose={() => setEditingLog(null)} onUpdate={handleUpdate} />}
+      {showAddModal && <AdminAddLogModal db={db} appId={appId} onClose={() => setShowAddModal(false)} lang={lang} />}
+      {editingLog && <EditLogModal log={editingLog} onClose={() => setEditingLog(null)} onUpdate={handleUpdate} lang={lang} />}
       {viewImage && <ImageViewerModal imageUrl={viewImage} onClose={() => setViewImage(null)} />}
     </div>
   );
@@ -1595,7 +1577,7 @@ export default function App() {
             </div>
           </header>
           <main className="flex-1 w-full p-0 md:p-4 print:p-0">
-            {currentUser.role === 'admin' ? <AdminDashboard db={db} appId={appId} /> : <WorkerDashboard user={currentUser} db={db} appId={appId} lang={lang} />}
+            {currentUser.role === 'admin' ? <AdminDashboard db={db} appId={appId} lang={lang} /> : <WorkerDashboard user={currentUser} db={db} appId={appId} lang={lang} />}
           </main>
         </div>
       )}
