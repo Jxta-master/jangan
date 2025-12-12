@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { 
   ClipboardList, User, Settings, LogOut, FileSpreadsheet, CheckCircle, 
-  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator, Globe
+  Truck, Factory, FileText, AlertCircle, Lock, Calendar, Save, Trash2, Ruler, Pencil, X, Clock, Camera, Image as ImageIcon, ChevronDown, Filter, Printer, BarChart3, BookOpen, Paperclip, FileText as FileIcon, List, Layers, HelpCircle, Plus, Calculator
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -30,7 +30,27 @@ const db = getFirestore(app);
 // 로컬 환경용 고정 App ID
 const appId = 'mes-production-v1';
 
-// --- [NEW] Translations ---
+// --- Constants & Helper Functions ---
+const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
+const PROCESS_TYPES = ['소재준비', '프레스', '후가공', '검사'];
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+
+const isKGM = (model) => ['J100', 'O100', 'J120'].includes(model);
+
+const getLogTitle = (model, process) => {
+  if (!model || !process) return '';
+  switch (process) {
+    case '소재준비': return `${model} 소재준비`;
+    case '프레스': return isKGM(model) ? 'KGM 프레스' : `${model} 프레스`;
+    case '후가공': return '후가공일보';
+    case '검사': return isKGM(model) ? 'KGM 검사일보' : `검사일보 ${model}`;
+    default: return `${model} ${process} 일보`;
+  }
+};
+
+// --- Translations ---
 const TRANSLATIONS = {
   // General
   '작 업 일 보': { en: 'Work Log', ru: 'Рабочий журнал', th: 'บันทึกงาน', vn: 'Nhật ký công việc' },
@@ -115,33 +135,13 @@ const TRANSLATIONS = {
   '기타': { en: 'Other', ru: 'Прочее', th: 'อื่นๆ', vn: 'Khác' },
 };
 
-// Helper function for translation
 const getTranslatedText = (text, lang) => {
   if (lang === 'kr' || !text) return text;
   const translation = TRANSLATIONS[text]?.[lang];
   return translation ? `${text} (${translation})` : text;
 };
 
-// --- Constants & Helper Functions ---
-const VEHICLE_MODELS = ['DN8', 'LF', 'DE', 'J100', 'J120', 'O100', 'GN7'];
-const PROCESS_TYPES = ['소재준비', '프레스', '후가공', '검사'];
-
-const HOURS = Array.from({ length: 24 }, (_, i) => i + 1);
-const MINUTES = Array.from({ length: 60 }, (_, i) => i);
-
-const isKGM = (model) => ['J100', 'O100', 'J120'].includes(model);
-
-const getLogTitle = (model, process) => {
-  if (!model || !process) return '';
-  switch (process) {
-    case '소재준비': return `${model} 소재준비`;
-    case '프레스': return isKGM(model) ? 'KGM 프레스' : `${model} 프레스`;
-    case '후가공': return '후가공일보';
-    case '검사': return isKGM(model) ? 'KGM 검사일보' : `검사일보 ${model}`;
-    default: return `${model} ${process} 일보`;
-  }
-};
-
+// [수정] 검사 공정 불량 유형 상세 리스트
 const INSPECTION_DEFECT_GROUPS = [
   {
     category: '소재 불량',
@@ -186,12 +186,14 @@ const INSPECTION_DEFECT_GROUPS = [
   }
 ];
 
+// --- 작성 가이드 이미지 데이터 ---
 const GUIDE_IMAGES = [
   "/images/guide_1.jpg",
   "/images/guide_2.jpg",
   "/images/guide_3.jpg"
 ];
 
+// --- 작업 표준서 데이터 (로컬 이미지) ---
 const PROCESS_STANDARDS = {
   'DN8': {
     '소재준비': [
@@ -202,19 +204,42 @@ const PROCESS_STANDARDS = {
     '후가공': ["/images/DN8_FRT_HU.jpeg", "/images/DN8_RR_HU.jpeg"],
     '검사': ["/images/DN8_G_P.jpg", "/images/DN8_G_R.jpg", "/images/DN8_O.jpg"]
   },
-  'GN7': { '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [] },
-  'J100': { '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"], '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"] },
-  'J120': { '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"] },
-  'O100': { '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"], '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"] }
+  'GN7': {
+    '소재준비': ["/images/GN7_SO.jpeg"], '프레스': ["/images/GN7_P.jpeg"], '후가공': ["/images/GN7_HU.jpeg"], '검사': [], 
+  },
+  'J100': {
+    '소재준비': ["/images/J100_SO.jpg", "/images/J100_SO_B.jpg", "/images/J100_SO_C.jpg"],
+    '프레스': ["/images/J100_P.jpg"], '후가공': ["/images/J100_HU.jpg"], '검사': ["/images/DN8_O.jpg"], 
+  },
+  'J120': {
+    '소재준비': ["/images/J120_SO.jpg"], '프레스': ["/images/J120_P.jpg"], '후가공': ["/images/J120_HU.jpg"], '검사': ["/images/DN8_O.jpg"],
+  },
+  'O100': {
+    '소재준비': ["/images/O100_SO.jpg", "/images/O100_SO_B1.jpg"],
+    '프레스': ["/images/O100_P.jpg"], '후가공': ["/images/O100_HU.jpg"], '검사': ["/images/O100_T.jpg"],
+  }
 };
 
+// --- Inspection Specs ---
 const INSPECTION_SPECS = {
-  'DN8': [{ part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' }, { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' }, { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' }, { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' }],
-  'J100': [{ part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' }],
-  'J120': [{ part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' }],
-  'O100': [{ part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' }]
+  'DN8': [
+    { part: 'FRT LH A', spec: '1176±5' }, { part: 'FRT RH A', spec: '1176±5' },
+    { part: 'RR LH A', spec: '644±5' }, { part: 'RR LH C', spec: '396±3' },
+    { part: 'RR LH D', spec: '293±3' }, { part: 'RR RH A', spec: '644±5' },
+    { part: 'RR RH C', spec: '396±3' }, { part: 'RR RH D', spec: '293±3' },
+  ],
+  'J100': [
+    { part: 'RR A', spec: '708±5' }, { part: 'RR C', spec: '388±5' }, { part: 'RR D', spec: '273±3' },
+  ],
+  'J120': [
+    { part: 'A', spec: '650±5' }, { part: 'E', spec: '250±3' },
+  ],
+  'O100': [
+    { part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' },
+  ]
 };
 
+// --- Form Templates ---
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -266,14 +291,6 @@ const FORM_TEMPLATES = {
   }
 };
 
-const getFormType = (process) => {
-  if (process.includes('소재')) return 'material';
-  if (process.includes('프레스')) return 'press';
-  if (process.includes('후가공')) return 'post';
-  if (process.includes('검사')) return 'inspection';
-  return 'material';
-};
-
 // --- Components ---
 
 const compressImage = (file) => {
@@ -310,6 +327,7 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
+// [NEW] Inspection Defect Input Modal
 const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply, lang }) => {
   const [defects, setDefects] = useState(currentData || {});
 
@@ -613,13 +631,18 @@ const LoginScreen = ({ onLogin }) => {
   );
 };
 
-const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefectDetail, lang }) => {
+const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang }) => {
   const formType = getFormType(processType);
   const template = FORM_TEMPLATES[formType];
   const rowLabels = template.rows(vehicle);
   const [formData, setFormData] = useState({});
   const fileInputRef = useRef(null);
   const [activeCell, setActiveCell] = useState({ row: null, col: null });
+  
+  // Defect Modal State (moved here)
+  const [showDefectModal, setShowDefectModal] = useState(false);
+  const [defectRowLabel, setDefectRowLabel] = useState('');
+  const [currentDefectData, setCurrentDefectData] = useState({});
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) { setFormData(initialData); }
@@ -629,16 +652,18 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
     let totalQty = 0;
     let totalDefect = 0;
     Object.keys(formData).forEach(r => {
-      // 정품수량 자동 계산
       const qty = Number(formData[r]['qty'] || formData[r]['check_qty'] || 0);
       const defect = Number(formData[r]['defect_qty'] || formData[r]['defect_total'] || 0);
       
+      // Auto calc good_qty
       if (template.columns.find(c => c.key === 'good_qty')) {
-        if (formData[r]['good_qty'] !== qty - defect) {
-           setFormData(prev => ({
-             ...prev,
-             [r]: { ...prev[r], good_qty: qty - defect }
-           }));
+        const good = Math.max(0, qty - defect);
+        if (formData[r]['good_qty'] !== good) {
+           // Direct mutation to avoid loop, or strict check
+           // Using functional update carefully
+           // Actually, calling setFormData here might loop if not careful.
+           // Better to calculate good_qty on render or only when saving.
+           // But let's try to update state if it differs.
         }
       }
 
@@ -658,6 +683,14 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
     const colDef = template.columns.find(c => c.key === colKey);
     const finalValue = colDef.type === 'number' ? (Number(value) || 0) : value;
     newData[rowLabel][colKey] = finalValue;
+    
+    // Calculate good_qty immediately
+    const qty = colKey === 'qty' || colKey === 'check_qty' ? finalValue : (newData[rowLabel]['qty'] || newData[rowLabel]['check_qty'] || 0);
+    const defect = colKey === 'defect_qty' || colKey === 'defect_total' ? finalValue : (newData[rowLabel]['defect_qty'] || newData[rowLabel]['defect_total'] || 0);
+    if(template.columns.find(c=>c.key==='good_qty')) {
+        newData[rowLabel]['good_qty'] = Math.max(0, qty - defect);
+    }
+    
     setFormData(newData);
   };
 
@@ -667,7 +700,26 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
   };
   
   const handleDefectPopup = (rowLabel) => {
-    if(onDefectDetail) onDefectDetail(rowLabel, formData[rowLabel]?.defect_details || {});
+    setDefectRowLabel(rowLabel);
+    setCurrentDefectData(formData[rowLabel]?.defect_details || {});
+    setShowDefectModal(true);
+  };
+
+  const handleDefectApply = (total, detailData) => {
+     const newData = { ...formData };
+     if (!newData[defectRowLabel]) newData[defectRowLabel] = {};
+     newData[defectRowLabel]['defect_total'] = total; // For inspection
+     newData[defectRowLabel]['defect_qty'] = total; // For others if needed
+     newData[defectRowLabel]['defect_details'] = detailData;
+     
+     // Recalc good_qty
+     const qty = newData[defectRowLabel]['qty'] || newData[defectRowLabel]['check_qty'] || 0;
+     if(template.columns.find(c=>c.key==='good_qty')) {
+        newData[defectRowLabel]['good_qty'] = Math.max(0, qty - total);
+     }
+     
+     setFormData(newData);
+     setShowDefectModal(false);
   };
 
   const handleFileChange = async (e) => {
@@ -738,6 +790,16 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, onDefec
         </table>
       </div>
       <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+      
+      {showDefectModal && (
+        <InspectionDefectModal 
+          rowLabel={defectRowLabel} 
+          currentData={currentDefectData}
+          onClose={() => setShowDefectModal(false)}
+          onApply={handleDefectApply}
+          lang={lang}
+        />
+      )}
     </>
   );
 };
@@ -901,6 +963,7 @@ const AdminAddLogModal = ({ db, appId, onClose }) => {
                 defectQty: totalDefect,
                 notes,
                 workTime,
+                attachment: null,
                 timestamp: submitDate
             });
             alert("추가되었습니다.");
@@ -1061,10 +1124,6 @@ const WorkerDashboard = ({ user, db, appId, lang }) => {
   const [endHour, setEndHour] = useState('17');
   const [endMinute, setEndMinute] = useState('30');
   
-  // Defect Popup State
-  const [showDefectModal, setShowDefectModal] = useState(false);
-  const [defectRowLabel, setDefectRowLabel] = useState('');
-  const [currentDefectData, setCurrentDefectData] = useState({});
   const logTitle = useMemo(() => getLogTitle(vehicle, processType), [vehicle, processType]);
 
   useEffect(() => {
@@ -1104,25 +1163,6 @@ const WorkerDashboard = ({ user, db, appId, lang }) => {
     setFormDetails(details);
     setTotalQty(qty);
     setTotalDefect(defect);
-  };
-  
-  const handleDefectDetailOpen = (rowLabel, data) => {
-    setDefectRowLabel(rowLabel);
-    setCurrentDefectData(data || {});
-    setShowDefectModal(true);
-  };
-  
-  const handleDefectApply = (total, detailData) => {
-    // Update formDetails with total defect and details
-    setFormDetails(prev => ({
-      ...prev,
-      [defectRowLabel]: {
-        ...prev[defectRowLabel],
-        defect_total: total,
-        defect_details: detailData
-      }
-    }));
-    setShowDefectModal(false);
   };
 
   const handlePrint = () => { window.print(); };
@@ -1261,7 +1301,6 @@ const WorkerDashboard = ({ user, db, appId, lang }) => {
                processType={processType} 
                onChange={handleFormChange} 
                initialData={formDetails}
-               onDefectDetail={handleDefectDetailOpen} // Pass handler
                lang={lang}
             />
             
@@ -1300,15 +1339,6 @@ const WorkerDashboard = ({ user, db, appId, lang }) => {
 
       {showStandard && <StandardModal vehicle={vehicle} process={processType} onClose={() => setShowStandard(false)} lang={lang} />}
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} lang={lang} />}
-      {showDefectModal && (
-        <InspectionDefectModal 
-          rowLabel={defectRowLabel} 
-          currentData={currentDefectData}
-          onClose={() => setShowDefectModal(false)}
-          onApply={handleDefectApply}
-          lang={lang}
-        />
-      )}
       {submitSuccess && <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-6 py-3 shadow-2xl flex items-center gap-2 z-50 rounded-full print:hidden"><CheckCircle size={18} className="text-green-400" /><span className="font-bold text-sm">저장 완료</span></div>}
     </div>
   );
@@ -1325,7 +1355,7 @@ const AdminDashboard = ({ db, appId }) => {
   const [filterProcess, setFilterProcess] = useState('All');
   const [filterWorker, setFilterWorker] = useState('All');
   const [showPressSummary, setShowPressSummary] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false); // [NEW]
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     const [year, month] = filterDate.split('-');
