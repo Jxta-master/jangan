@@ -87,7 +87,6 @@ const TRANSLATIONS = {
   'Lot No': { en: 'Lot No', ru: 'Партия', th: 'ล็อต', vn: 'Số Lo' },
   'FMB LOT': { en: 'FMB LOT', ru: 'FMB LOT', th: 'FMB LOT', vn: 'FMB LOT' },
   '수지 LOT (직/둔)': { en: 'Resin LOT', ru: 'Смола LOT', th: 'เรซิน LOT', vn: 'Resin LOT' },
-  '호기(직/둔)': { en: 'Mold/Type', ru: 'Тип/№', th: 'แม่พิมพ์', vn: 'Khuôn/Loại' },
   '기포': { en: 'Bubble', ru: 'Пузырь', th: 'ฟองอากาศ', vn: 'Bọt khí' },
   '검사수량': { en: 'Insp Qty', ru: 'Кол-во пров.', th: 'จำนวนตรวจ', vn: 'SL Kiểm tra' },
   '소재 LOT 관리': { en: 'Material LOT', ru: 'Материал LOT', th: 'จัดการล็อตวัสดุ', vn: 'Quản lý Lo vật liệu' },
@@ -103,6 +102,7 @@ const TRANSLATIONS = {
   '총 불량 합계': { en: 'Total Defects', ru: 'Всего брака', th: 'รวมของเสีย', vn: 'Tổng lỗi' },
   '취소': { en: 'Cancel', ru: 'Отмена', th: 'ยกเลิก', vn: 'Hủy' },
   '적용': { en: 'Apply', ru: 'Применить', th: 'ใช้', vn: 'Áp dụng' },
+  '금형 타수 관리 (작업자별 누적)': { en: 'Mold Count (By Worker)', ru: 'Счетчик пресс-форм (по рабочим)', th: 'นับจำนวนแม่พิมพ์ (ตามคนงาน)', vn: 'Đếm khuôn (Theo công nhân)' },
   "스코치 'A'": { en: "Scorch A", ru: "Ожог A", th: "ไหม้ A", vn: "Cháy A" },
   "스코치 'B'": { en: "Scorch B", ru: "Ожог B", th: "ไหม้ B", vn: "Cháy B" },
   "스코치 'C'": { en: "Scorch C", ru: "Ожог C", th: "ไหม้ C", vn: "Cháy C" },
@@ -210,6 +210,7 @@ const INSPECTION_SPECS = {
   'O100': [{ part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' }]
 };
 
+// [수정] 프레스 입력 양식에서 '호기(직/둔)' 제거됨
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -232,7 +233,6 @@ const FORM_TEMPLATES = {
     columns: [
       { key: 'fmb_lot', label: 'FMB LOT', type: 'text', isPhoto: true },
       { key: 'lot_resin', label: '수지 LOT (직/둔)', type: 'text' },
-      { key: 'mold_info', label: '호기(직/둔)', type: 'text' }, 
       { key: 'qty', label: '생산수량', type: 'number' },
       { key: 'defect_qty', label: '불량수량', type: 'number', isDefect: true },
       { key: 'good_qty', label: '정품수량', type: 'number', isReadOnly: true },
@@ -306,7 +306,6 @@ const ImageViewerModal = ({ imageUrl, onClose }) => {
   );
 };
 
-// [NEW] Inspection Defect Input Modal
 const InspectionDefectModal = ({ rowLabel, currentData, onClose, onApply, lang }) => {
   const [defects, setDefects] = useState(currentData || {});
 
@@ -417,51 +416,103 @@ const StandardModal = ({ vehicle, process, onClose, lang }) => {
   );
 };
 
-// [NEW] Mold Management Component
+// [NEW] Mold Management Component (Worker-based accumulation)
 const MoldManagement = ({ logs, lang }) => {
   const moldData = useMemo(() => {
-    const summary = {};
+    const summary = {}; // { [model]: { [worker]: { [part]: qty } } }
+    
     logs.forEach(log => {
       if (log.processType === '프레스' && log.details) {
         const model = log.vehicleModel;
+        const worker = log.workerName;
+        
+        if (!summary[model]) summary[model] = {};
+        if (!summary[model][worker]) summary[model][worker] = {};
+        
         Object.entries(log.details).forEach(([part, data]) => {
-          const moldInfo = data.mold_info || '미지정';
-          if (!summary[model]) summary[model] = {};
-          if (!summary[model][part]) summary[model][part] = {};
-          if (!summary[model][part][moldInfo]) summary[model][part][moldInfo] = 0;
-          summary[model][part][moldInfo] += (Number(data.qty) || 0);
+          const qty = Number(data.qty) || 0;
+          if (qty > 0) {
+             summary[model][worker][part] = (summary[model][worker][part] || 0) + qty;
+          }
         });
       }
     });
     return summary;
   }, [logs]);
 
+  // Helper to determine parts based on model
+  const getPartsForModel = (model) => {
+      if (model === 'DN8') return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'];
+      return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'];
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-4"><Wrench className="text-blue-600" /> 금형 타수 관리 (누적 생산량)</h2>
+        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-6">
+          <Wrench className="text-blue-600" /> 
+          {getTranslatedText('금형 타수 관리 (작업자별 누적)', lang)}
+        </h2>
+        
         {Object.keys(moldData).length === 0 ? (
-          <div className="text-center py-12 text-gray-400">프레스 작업 데이터가 없습니다.</div>
+          <div className="text-center py-12 text-gray-400">{getTranslatedText('데이터가 없습니다.', lang)}</div>
         ) : (
-          <div className="space-y-8">
-            {Object.entries(moldData).map(([model, parts]) => (
-              <div key={model} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-100 px-4 py-2 font-bold text-lg border-b flex justify-between"><span>{model}</span></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y md:divide-y-0 md:divide-x">
-                  {Object.entries(parts).map(([part, molds]) => (
-                    <div key={part} className="p-4">
-                      <h4 className="font-bold text-gray-700 mb-3 text-center border-b pb-2">{part}</h4>
-                      <ul className="space-y-2">
-                        {Object.entries(molds).map(([mold, qty]) => (
-                          <li key={mold} className="flex justify-between items-center text-sm"><span className="bg-blue-50 text-blue-800 px-2 py-1 rounded text-xs font-bold">{mold}</span><span className="font-mono font-bold text-gray-900">{qty.toLocaleString()} 타</span></li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          Object.entries(moldData).map(([model, workersData]) => {
+             const parts = getPartsForModel(model);
+             return (
+               <div key={model} className="mb-8 last:mb-0">
+                 <h3 className="bg-gray-100 px-4 py-2 font-bold text-lg border rounded-t-lg border-gray-300 text-gray-800">
+                   {model}
+                 </h3>
+                 <div className="overflow-x-auto border border-t-0 border-gray-300 rounded-b-lg">
+                   <table className="w-full text-sm text-left whitespace-nowrap">
+                     <thead className="bg-blue-50 text-blue-900 font-bold uppercase text-xs">
+                       <tr>
+                         <th className="px-4 py-3 border-r border-gray-200">작업자</th>
+                         {parts.map(part => (
+                           <th key={part} className="px-4 py-3 text-right border-r border-gray-200">{part}</th>
+                         ))}
+                         <th className="px-4 py-3 text-right">합계</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-100">
+                       {Object.entries(workersData).map(([worker, partsData]) => {
+                         const workerTotal = parts.reduce((sum, part) => sum + (partsData[part] || 0), 0);
+                         return (
+                           <tr key={worker} className="hover:bg-gray-50">
+                             <td className="px-4 py-2 font-bold border-r border-gray-100">{worker}</td>
+                             {parts.map(part => (
+                               <td key={part} className="px-4 py-2 text-right border-r border-gray-100 font-mono">
+                                 {(partsData[part] || 0).toLocaleString()}
+                               </td>
+                             ))}
+                             <td className="px-4 py-2 text-right font-bold text-blue-600 font-mono">
+                               {workerTotal.toLocaleString()}
+                             </td>
+                           </tr>
+                         );
+                       })}
+                       {/* Total Row */}
+                       <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                         <td className="px-4 py-2 text-center border-r border-gray-300">총계</td>
+                         {parts.map(part => {
+                           const partTotal = Object.values(workersData).reduce((sum, wData) => sum + (wData[part] || 0), 0);
+                           return (
+                             <td key={part} className="px-4 py-2 text-right border-r border-gray-300 font-mono">
+                               {partTotal.toLocaleString()}
+                             </td>
+                           );
+                         })}
+                         <td className="px-4 py-2 text-right text-blue-800 font-mono">
+                           {Object.values(workersData).reduce((totalSum, wData) => totalSum + Object.values(wData).reduce((a,b)=>a+b,0), 0).toLocaleString()}
+                         </td>
+                       </tr>
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             );
+          })
         )}
       </div>
     </div>
@@ -539,9 +590,10 @@ const PressSummaryTable = ({ logs }) => {
         const model = log.vehicleModel;
         if (!summary[model]) return;
         Object.entries(log.details).forEach(([part, data]) => {
-          if (!summary[model][part]) summary[model][part] = { prod: 0, def: 0 };
-          summary[model][part].prod += (Number(data.qty) || 0);
-          summary[model][part].def += (Number(data.defect_qty) || 0);
+          if (summary[model][part]) {
+            summary[model][part].prod += (Number(data.qty) || 0);
+            summary[model][part].def += (Number(data.defect_qty) || 0);
+          }
         });
       }
     });
@@ -734,11 +786,10 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang })
   const handleDefectApply = (total, detailData) => {
      const newData = { ...formData };
      if (!newData[defectRowLabel]) newData[defectRowLabel] = {};
-     newData[defectRowLabel]['defect_total'] = total; // For inspection
-     newData[defectRowLabel]['defect_qty'] = total; // For others if needed
+     newData[defectRowLabel]['defect_total'] = total;
+     newData[defectRowLabel]['defect_qty'] = total;
      newData[defectRowLabel]['defect_details'] = detailData;
      
-     // Recalc good_qty
      const qty = newData[defectRowLabel]['qty'] || newData[defectRowLabel]['check_qty'] || 0;
      if(template.columns.find(c=>c.key==='good_qty')) {
         newData[defectRowLabel]['good_qty'] = Math.max(0, qty - total);
