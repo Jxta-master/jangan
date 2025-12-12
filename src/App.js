@@ -210,7 +210,6 @@ const INSPECTION_SPECS = {
   'O100': [{ part: 'A', spec: '753±5' }, { part: 'D', spec: '270±3' }, { part: 'B1', spec: '258±3' }]
 };
 
-// [수정] 프레스 입력 양식에서 '호기(직/둔)' 제거됨
 const FORM_TEMPLATES = {
   material: {
     columns: [
@@ -416,10 +415,9 @@ const StandardModal = ({ vehicle, process, onClose, lang }) => {
   );
 };
 
-// [NEW] Mold Management Component (Worker-based accumulation)
 const MoldManagement = ({ logs, lang }) => {
   const moldData = useMemo(() => {
-    const summary = {}; // { [model]: { [worker]: { [part]: qty } } }
+    const summary = {}; 
     
     logs.forEach(log => {
       if (log.processType === '프레스' && log.details) {
@@ -440,7 +438,6 @@ const MoldManagement = ({ logs, lang }) => {
     return summary;
   }, [logs]);
 
-  // Helper to determine parts based on model
   const getPartsForModel = (model) => {
       if (model === 'DN8') return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH', 'RR END LH', 'RR END RH'];
       return ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'];
@@ -492,7 +489,6 @@ const MoldManagement = ({ logs, lang }) => {
                            </tr>
                          );
                        })}
-                       {/* Total Row */}
                        <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
                          <td className="px-4 py-2 text-center border-r border-gray-300">총계</td>
                          {parts.map(part => {
@@ -519,68 +515,242 @@ const MoldManagement = ({ logs, lang }) => {
   );
 };
 
+// --- [UPDATED v3] Advanced Analytics Component (X축 날짜 표시 & 막대 내부 수치 표시) ---
+const AdvancedAnalytics = ({ logs, currentYearMonth }) => {
+  const [selectedModel, setSelectedModel] = useState('DN8'); 
+  const [hoveredDay, setHoveredDay] = useState(null); 
 
-const SimpleBarChart = ({ data, color = "bg-blue-500" }) => {
-  if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-gray-400 text-sm">데이터 없음</div>;
-  const maxVal = Math.max(...data.map(d => d.value), 1);
-  return (
-    <div className="flex items-end h-32 gap-2 mt-4">
-      {data.map((d, idx) => (
-        <div key={idx} className="flex-1 flex flex-col items-center group relative">
-          <div className="absolute bottom-full mb-1 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">{d.value}</div>
-          <div className={`w-full max-w-[40px] rounded-t-sm transition-all duration-500 ${color}`} style={{ height: `${(d.value / maxVal) * 100}%` }}></div>
-          <div className="text-[10px] text-gray-500 mt-1 truncate w-full text-center">{d.label}</div>
-        </div>
-      ))}
-    </div>
-  );
-};
+  // 1. 데이터 필터링
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => log.vehicleModel === selectedModel);
+  }, [logs, selectedModel]);
 
-const DashboardStats = ({ logs }) => {
-  const pressProductionData = useMemo(() => {
+  // 2. KPI 계산
+  const kpi = useMemo(() => {
+    let totalProd = 0;
+    let totalDefect = 0;
+    filteredLogs.forEach(log => {
+      totalProd += (Number(log.productionQty) || 0);
+      totalDefect += (Number(log.defectQty) || 0);
+    });
+    const rate = totalProd > 0 ? ((totalDefect / totalProd) * 100).toFixed(2) : '0.00';
+    return { totalProd, totalDefect, rate };
+  }, [filteredLogs]);
+
+  // 3. 차트 데이터 가공
+  const chartData = useMemo(() => {
+    const daysInMonth = new Date(currentYearMonth.split('-')[0], currentYearMonth.split('-')[1], 0).getDate();
+    
+    const stats = Array.from({ length: daysInMonth }, (_, i) => ({
+      day: i + 1,
+      'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0,
+      total: 0
+    }));
+
+    filteredLogs.forEach(log => {
+      const date = new Date(log.timestamp.seconds * 1000);
+      const day = date.getDate();
+      const target = stats[day - 1];
+
+      if (log.details && target) {
+        let dayTotal = 0;
+        ['FRT LH', 'FRT RH', 'RR LH', 'RR RH'].forEach(part => {
+          if (log.details[part]) {
+            const qty = Number(log.details[part].qty || log.details[part].check_qty || 0);
+            target[part] += qty;
+            dayTotal += qty;
+          }
+        });
+        target.total = dayTotal;
+      }
+    });
+
+    return stats;
+  }, [filteredLogs, currentYearMonth]);
+
+  // 4. 불량 유형 집계
+  const defectTypeRanking = useMemo(() => {
     const counts = {};
-    logs.filter(l => l.processType === '프레스').forEach(log => {
+    filteredLogs.forEach(log => {
       if (log.details) {
-        Object.entries(log.details).forEach(([part, data]) => {
-           if(data && data.qty) {
-             counts[part] = (counts[part] || 0) + (Number(data.qty) || 0);
-           }
+        Object.values(log.details).forEach(row => {
+          if (row.defect_details) {
+            Object.entries(row.defect_details).forEach(([key, val]) => {
+              counts[key] = (counts[key] || 0) + (Number(val) || 0);
+            });
+          }
         });
       }
     });
-    return Object.entries(counts).map(([k, v]) => ({ label: k, value: v }));
-  }, [logs]);
+    
+    const getLabel = (key) => {
+       const flatItems = INSPECTION_DEFECT_GROUPS.flatMap(g => g.items);
+       const found = flatItems.find(i => i.key === key);
+       return found ? found.label : key;
+    };
 
-  const inspectionDefectData = useMemo(() => {
-    const counts = { 'FRT LH': 0, 'FRT RH': 0, 'RR LH': 0, 'RR RH': 0 };
-    logs.filter(l => l.processType === '검사').forEach(log => {
-      if (log.details) {
-        Object.keys(counts).forEach(key => { if (log.details[key]) counts[key] += (Number(log.details[key].defect_total) || 0); });
-      }
-    });
-    return Object.entries(counts).map(([k, v]) => ({ label: k, value: v }));
-  }, [logs]);
+    return Object.entries(counts)
+      .map(([key, val]) => ({ label: getLabel(key), value: val }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [filteredLogs]);
+
+  const maxDailyTotal = Math.max(...chartData.map(d => d.total), 10);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-slate-500 font-bold text-sm">프레스 생산량 (부위별)</h3>
-          <div className="p-2 bg-blue-50 rounded-full text-blue-600"><Factory size={20} /></div>
+    <div className="space-y-6 mb-8 animate-fade-in">
+      {/* 1. 상단 컨트롤 & KPI */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="text-blue-600" /> 월간 생산 분석 ({currentYearMonth})
+          </h2>
+          <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+            <Truck size={18} className="text-gray-500" />
+            <select 
+              value={selectedModel} 
+              onChange={(e) => setSelectedModel(e.target.value)} 
+              className="bg-transparent font-bold text-gray-700 outline-none cursor-pointer"
+            >
+              {VEHICLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
         </div>
-        <SimpleBarChart data={pressProductionData} color="bg-blue-500" />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex justify-between items-center">
+             <div><p className="text-sm text-blue-600 font-bold mb-1">총 생산수량</p><h3 className="text-2xl font-extrabold text-blue-900">{kpi.totalProd.toLocaleString()}</h3></div>
+             <Factory className="text-blue-300 w-10 h-10" />
+          </div>
+          <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex justify-between items-center">
+             <div><p className="text-sm text-red-600 font-bold mb-1">총 불량수량</p><h3 className="text-2xl font-extrabold text-red-700">{kpi.totalDefect.toLocaleString()}</h3></div>
+             <AlertCircle className="text-red-300 w-10 h-10" />
+          </div>
+          <div className="p-4 bg-purple-50 rounded-xl border border-purple-100 flex justify-between items-center">
+             <div><p className="text-sm text-purple-600 font-bold mb-1">종합 불량률</p><h3 className="text-2xl font-extrabold text-purple-800">{kpi.rate}%</h3></div>
+             <Calculator className="text-purple-300 w-10 h-10" />
+          </div>
+        </div>
       </div>
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-slate-500 font-bold text-sm">검사 불량수량 (부위별)</h3>
-          <div className="p-2 bg-red-50 rounded-full text-red-600"><AlertCircle size={20} /></div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 2. 일별 생산 추이 (Stacked Bar Chart) */}
+        <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+             <h3 className="font-bold text-gray-700 flex items-center gap-2"><Calendar size={18} /> 일별 생산 추이 ({selectedModel})</h3>
+             <div className="flex flex-wrap gap-2 text-[10px] md:text-xs font-bold">
+               <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-blue-600"></div> FRT LH</span>
+               <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-blue-400"></div> FRT RH</span>
+               <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-orange-400"></div> RR LH</span>
+               <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-red-400"></div> RR RH</span>
+             </div>
+          </div>
+          
+          <div className="relative flex-1 min-h-[300px] w-full flex items-end justify-between gap-1 pt-8 pb-8 px-2">
+            {/* 그리드 라인 */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none px-2 pb-8 pt-8">
+               {[100, 75, 50, 25, 0].map((pct) => (
+                 <div key={pct} className="border-t border-gray-100 w-full relative h-0">
+                    <span className="absolute -top-2 -left-0 text-[10px] text-gray-300">
+                      {Math.round(maxDailyTotal * (pct / 100))}
+                    </span>
+                 </div>
+               ))}
+            </div>
+
+            {/* 차트 렌더링 */}
+            {chartData.map((d, idx) => {
+               // 높이 비율 계산
+               const h1 = (d['FRT LH'] / maxDailyTotal) * 100;
+               const h2 = (d['FRT RH'] / maxDailyTotal) * 100;
+               const h3 = (d['RR LH'] / maxDailyTotal) * 100;
+               const h4 = (d['RR RH'] / maxDailyTotal) * 100;
+               
+               // 숫자를 표시할 최소 높이 (8%)
+               const showLabel = (pct) => pct > 8;
+
+               return (
+                 <div 
+                   key={idx} 
+                   className="relative flex-1 flex flex-col justify-end h-full group"
+                 >
+                   {/* Stacked Bars */}
+                   {d.total > 0 && (
+                     <div className="w-full flex flex-col justify-end relative h-full rounded-t-sm overflow-hidden hover:opacity-90 transition-opacity cursor-pointer">
+                        {/* 툴팁 */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-slate-800 text-white text-[10px] p-2 rounded z-20 hidden group-hover:block shadow-lg pointer-events-none">
+                          <div className="font-bold border-b border-gray-600 pb-1 mb-1 text-center">{d.day}일 생산합계: {d.total}</div>
+                          <div className="flex justify-between"><span className="text-red-300">RR RH</span> <span>{d['RR RH']}</span></div>
+                          <div className="flex justify-between"><span className="text-orange-300">RR LH</span> <span>{d['RR LH']}</span></div>
+                          <div className="flex justify-between"><span className="text-blue-200">FRT RH</span> <span>{d['FRT RH']}</span></div>
+                          <div className="flex justify-between"><span className="text-blue-300">FRT LH</span> <span>{d['FRT LH']}</span></div>
+                        </div>
+
+                        {/* 막대 세그먼트 (위 -> 아래 순서로 렌더링되지만 flex-col justify-end로 인해 아래 -> 위로 쌓임) 
+                            주의: 코드 상 먼저 나오는게 DOM 상위에 위치하므로 flex-col justify-end에서는 '맨 위'에 위치함.
+                        */}
+                        
+                        {/* 4. RR RH (빨강 - 맨 위) */}
+                        <div style={{ height: `${h4}%` }} className="w-full bg-red-400 relative border-b border-white/20">
+                          {showLabel(h4) && <span className="absolute inset-0 flex items-center justify-center text-[9px] text-white font-bold">{d['RR RH']}</span>}
+                        </div>
+                        {/* 3. RR LH (주황) */}
+                        <div style={{ height: `${h3}%` }} className="w-full bg-orange-400 relative border-b border-white/20">
+                           {showLabel(h3) && <span className="absolute inset-0 flex items-center justify-center text-[9px] text-white font-bold">{d['RR LH']}</span>}
+                        </div>
+                        {/* 2. FRT RH (하늘) */}
+                        <div style={{ height: `${h2}%` }} className="w-full bg-blue-400 relative border-b border-white/20">
+                           {showLabel(h2) && <span className="absolute inset-0 flex items-center justify-center text-[9px] text-white font-bold">{d['FRT RH']}</span>}
+                        </div>
+                        {/* 1. FRT LH (파랑 - 맨 아래) */}
+                        <div style={{ height: `${h1}%` }} className="w-full bg-blue-600 relative">
+                           {showLabel(h1) && <span className="absolute inset-0 flex items-center justify-center text-[9px] text-white font-bold">{d['FRT LH']}</span>}
+                        </div>
+                     </div>
+                   )}
+                   
+                   {/* X축 날짜 (개선됨: 위치 조정 및 가독성 확보) */}
+                   <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-medium whitespace-nowrap">
+                     {d.day}일
+                   </div>
+                 </div>
+               );
+            })}
+          </div>
         </div>
-        <SimpleBarChart data={inspectionDefectData} color="bg-red-500" />
+
+        {/* 3. 불량 유형 TOP 5 */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><List size={18} /> 불량 유형 TOP 5 ({selectedModel})</h3>
+          <div className="space-y-4">
+            {defectTypeRanking.length > 0 ? defectTypeRanking.map((item, idx) => (
+              <div key={idx} className="relative group">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-bold text-gray-700 flex items-center gap-2">
+                    <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs text-white ${idx === 0 ? 'bg-red-500' : 'bg-gray-400'}`}>{idx + 1}</span>
+                    {item.label}
+                  </span>
+                  <span className="text-red-600 font-bold">{item.value.toLocaleString()}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-red-500 h-2 rounded-full transition-all duration-1000" 
+                    style={{ width: `${(item.value / defectTypeRanking[0].value) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <CheckCircle className="mx-auto text-gray-300 mb-2" size={32} />
+                <p className="text-gray-400 text-sm">해당 차종의 불량 데이터가 없습니다.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
 const PressSummaryTable = ({ logs }) => {
   const summaryData = useMemo(() => {
     const summary = {};
@@ -652,7 +822,222 @@ const PressSummaryTable = ({ logs }) => {
     </div>
   );
 };
+// --- [FIXED] Monthly Report Modal (인쇄 시 배경 숨김 기능 추가) ---
+const MonthlyReportModal = ({ logs, date, onClose }) => {
+  // 데이터 가공 로직 (기존과 동일)
+  const reportData = useMemo(() => {
+    const data = {}; 
+    logs.forEach(log => {
+      const model = log.vehicleModel;
+      if (!data[model]) data[model] = { totalProd: 0, totalDefect: 0, processes: {}, defectCounts: {} };
 
+      const prod = Number(log.productionQty) || 0;
+      const def = Number(log.defectQty) || 0;
+      data[model].totalProd += prod;
+      data[model].totalDefect += def;
+
+      const proc = log.processType;
+      if (!data[model].processes[proc]) data[model].processes[proc] = { prod: 0, def: 0 };
+      data[model].processes[proc].prod += prod;
+      data[model].processes[proc].def += def;
+
+      if (log.details) {
+        Object.values(log.details).forEach(row => {
+          if (row.defect_details) {
+            Object.entries(row.defect_details).forEach(([k, v]) => {
+              data[model].defectCounts[k] = (data[model].defectCounts[k] || 0) + (Number(v) || 0);
+            });
+          }
+        });
+      }
+    });
+    return data;
+  }, [logs]);
+
+  const getDefectLabel = (key) => {
+    const flatItems = INSPECTION_DEFECT_GROUPS.flatMap(g => g.items);
+    const found = flatItems.find(i => i.key === key);
+    return found ? found.label : key;
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex justify-center z-[9999] overflow-y-auto pt-10 pb-10 print:p-0 print:m-0 print:overflow-visible print:bg-white print:inset-auto print:static">
+      
+      {/* [핵심 수정] 인쇄 전용 스타일 추가 
+        - body * { visibility: hidden } : 화면의 모든 요소를 숨깁니다.
+        - #print-section * { visibility: visible } : 오직 보고서 영역만 다시 보이게 합니다.
+        - position: absolute : 보고서를 종이의 맨 위(0,0)로 강제 이동시킵니다.
+      */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #print-section, #print-section * {
+            visibility: visible;
+          }
+          #print-section {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            z-index: 99999;
+          }
+          /* 불필요한 스크롤바 숨김 */
+          html, body {
+            height: auto;
+            overflow: visible;
+          }
+        }
+      `}</style>
+
+      {/* 모달 컨테이너 */}
+      <div 
+        id="print-section" // 👈 여기가 인쇄될 영역입니다
+        className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-2xl md:rounded-lg flex flex-col relative print:shadow-none print:rounded-none"
+      >
+        
+        {/* 상단 헤더 (인쇄 시 숨김 처리됨 - print:hidden) */}
+        <div className="bg-gray-800 text-white p-4 flex justify-between items-center print:hidden rounded-t-lg sticky top-0 z-50">
+          <h3 className="font-bold flex items-center gap-2"><FileText /> 월간 생산분석 보고서 미리보기</h3>
+          <div className="flex gap-2">
+            <button onClick={handlePrint} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-bold flex items-center gap-2"><Printer size={16}/> 인쇄</button>
+            <button onClick={onClose} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded font-bold"><X size={16}/></button>
+          </div>
+        </div>
+
+        {/* 실제 보고서 내용 */}
+        <div className="p-8 text-black h-full">
+          {/* 제목 및 결재란 */}
+          <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-8">
+            <div className="text-left">
+              <h1 className="text-3xl font-extrabold tracking-widest mb-2">월간 생산분석 보고서</h1>
+              <p className="text-lg font-bold text-gray-600">기간: {date}</p>
+            </div>
+            <div className="flex border border-black text-center">
+              <div className="w-20">
+                <div className="bg-gray-100 border-b border-black py-1 text-xs font-bold">작 성</div>
+                <div className="h-16 flex items-center justify-center text-sm">관리자</div>
+              </div>
+              <div className="w-20 border-l border-black">
+                <div className="bg-gray-100 border-b border-black py-1 text-xs font-bold">검 토</div>
+                <div className="h-16"></div>
+              </div>
+              <div className="w-20 border-l border-black">
+                <div className="bg-gray-100 border-b border-black py-1 text-xs font-bold">승 인</div>
+                <div className="h-16"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* 데이터 루프 */}
+          <div className="space-y-10">
+            {Object.keys(reportData).length === 0 ? (
+              <div className="text-center py-20 text-gray-400">데이터가 없습니다.</div>
+            ) : (
+              Object.entries(reportData).map(([model, data]) => {
+                const defectRate = data.totalProd > 0 ? ((data.totalDefect / data.totalProd) * 100).toFixed(2) : "0.00";
+                const top5Defects = Object.entries(data.defectCounts)
+                  .map(([k, v]) => ({ label: getDefectLabel(k), value: v }))
+                  .sort((a, b) => b.value - a.value)
+                  .slice(0, 5);
+
+                return (
+                  <div key={model} className="break-inside-avoid page-break-after-always mb-8">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="bg-black text-white px-4 py-1 font-bold text-lg rounded-sm">{model}</div>
+                      <div className="flex-1 h-px bg-black"></div>
+                    </div>
+
+                    <div className="flex border border-black mb-4 bg-gray-50">
+                      <div className="flex-1 p-3 text-center border-r border-black">
+                        <div className="text-xs text-gray-500 font-bold mb-1">총 생산수량</div>
+                        <div className="text-xl font-extrabold">{data.totalProd.toLocaleString()}</div>
+                      </div>
+                      <div className="flex-1 p-3 text-center border-r border-black">
+                        <div className="text-xs text-gray-500 font-bold mb-1">총 불량수량</div>
+                        <div className="text-xl font-extrabold text-red-600">{data.totalDefect.toLocaleString()}</div>
+                      </div>
+                      <div className="flex-1 p-3 text-center">
+                        <div className="text-xs text-gray-500 font-bold mb-1">종합 불량률</div>
+                        <div className="text-xl font-extrabold text-blue-800">{defectRate}%</div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-6">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-sm mb-2 border-l-4 border-blue-600 pl-2">공정별 상세 실적</h4>
+                        <table className="w-full text-sm border-collapse border border-black">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-black py-1 px-2">공정명</th>
+                              <th className="border border-black py-1 px-2 text-right">생산</th>
+                              <th className="border border-black py-1 px-2 text-right">불량</th>
+                              <th className="border border-black py-1 px-2 text-center">불량률</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(data.processes).map(([proc, pData]) => (
+                              <tr key={proc}>
+                                <td className="border border-black py-1 px-2 font-bold text-center">{proc}</td>
+                                <td className="border border-black py-1 px-2 text-right">{pData.prod.toLocaleString()}</td>
+                                <td className="border border-black py-1 px-2 text-right text-red-600">{pData.def.toLocaleString()}</td>
+                                <td className="border border-black py-1 px-2 text-center text-xs">
+                                  {pData.prod > 0 ? ((pData.def / pData.prod) * 100).toFixed(2) : '0.00'}%
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="w-[40%]">
+                        <h4 className="font-bold text-sm mb-2 border-l-4 border-red-600 pl-2">불량 유형 TOP 5</h4>
+                        <table className="w-full text-sm border-collapse border border-black">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-black py-1 px-2 w-10">순위</th>
+                              <th className="border border-black py-1 px-2">유형</th>
+                              <th className="border border-black py-1 px-2 text-right">수량</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...Array(5)].map((_, idx) => {
+                              const item = top5Defects[idx];
+                              return (
+                                <tr key={idx}>
+                                  <td className="border border-black py-1 px-2 text-center bg-gray-50">{idx + 1}</td>
+                                  <td className="border border-black py-1 px-2">{item ? item.label : '-'}</td>
+                                  <td className="border border-black py-1 px-2 text-right font-bold">{item ? item.value : '-'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          
+          <div className="mt-12 text-center text-xs text-gray-400 border-t border-gray-300 pt-2">
+            MES Production Management System - Printed on {new Date().toLocaleString()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 const LoginScreen = ({ onLogin }) => {
   const ADMIN_PASSWORD = 'jangan123'; 
   const [role, setRole] = useState('worker');
@@ -881,7 +1266,6 @@ const DynamicTableForm = ({ vehicle, processType, onChange, initialData, lang })
   );
 };
 
-// [NEW] Material Lot Form (Restored)
 const MaterialLotForm = ({ onChange, initialData, lang }) => {
   const [data, setData] = useState(initialData || {});
   const materials = ['A소재', 'B소재', 'C소재', 'D소재'];
@@ -996,7 +1380,6 @@ const DimensionTableForm = ({ vehicle, onChange, initialData, lang }) => {
   );
 };
 
-// [NEW] Admin Add Log Modal
 const AdminAddLogModal = ({ db, appId, onClose, lang }) => {
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
     const [workerName, setWorkerName] = useState('');
@@ -1445,6 +1828,7 @@ const AdminDashboard = ({ db, appId, lang }) => {
   const [showPressSummary, setShowPressSummary] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState('logs'); // logs | mold
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     let q;
@@ -1483,24 +1867,6 @@ const AdminDashboard = ({ db, appId, lang }) => {
 
   const uniqueWorkers = useMemo(() => {
     return ['All', ...new Set(logs.map(log => log.workerName))].sort();
-  }, [logs]);
-
-  const pressSummary = useMemo(() => {
-    const summary = {};
-    VEHICLE_MODELS.forEach(model => { summary[model] = { 'FRT LH': { prod: 0, def: 0 }, 'FRT RH': { prod: 0, def: 0 }, 'RR LH': { prod: 0, def: 0 }, 'RR RH': { prod: 0, def: 0 }, 'RR END LH': { prod: 0, def: 0 }, 'RR END RH': { prod: 0, def: 0 } }; });
-    logs.forEach(log => {
-      if (log.processType === '프레스' && log.details) {
-        const model = log.vehicleModel;
-        if (!summary[model]) return;
-        Object.entries(log.details).forEach(([part, data]) => {
-          if (summary[model][part]) {
-            summary[model][part].prod += (Number(data.qty) || 0);
-            summary[model][part].def += (Number(data.defect_qty) || 0);
-          }
-        });
-      }
-    });
-    return summary;
   }, [logs]);
 
   const handleDelete = async (id) => {
@@ -1593,7 +1959,8 @@ const AdminDashboard = ({ db, appId, lang }) => {
 
   return (
     <div className="space-y-6">
-      <DashboardStats logs={filteredLogs} />
+      {/* [NEW] 고도화된 월별 통계 차트 및 KPI */}
+      <AdvancedAnalytics logs={filteredLogs} currentYearMonth={filterDate} />
 
       {/* Admin Tabs */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-300 flex justify-center gap-4">
@@ -1625,6 +1992,12 @@ const AdminDashboard = ({ db, appId, lang }) => {
               <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><Plus size={16} /> 누락분 추가</button>
               <button onClick={() => setShowPressSummary(!showPressSummary)} className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded ${showPressSummary ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}><List size={16} /> 프레스 요약</button>
               <button onClick={() => exportToCSV(filteredLogs)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"><FileSpreadsheet size={16} /> Excel 다운로드</button>
+              <button 
+                onClick={() => setShowReportModal(true)} 
+                className="w-full md:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 md:py-2 font-bold text-sm shadow transition rounded"
+              >
+                <Printer size={16} /> 월간 보고서
+              </button>
             </div>
           </div>
           
@@ -1676,6 +2049,14 @@ const AdminDashboard = ({ db, appId, lang }) => {
         <MoldManagement logs={logs} lang={lang} />
       )}
 
+      {showReportModal && (
+        <MonthlyReportModal 
+          logs={filteredLogs} 
+          date={filterDate}   
+          onClose={() => setShowReportModal(false)} 
+        />
+      )}
+      
       {showAddModal && <AdminAddLogModal db={db} appId={appId} onClose={() => setShowAddModal(false)} lang={lang} />}
       {editingLog && <EditLogModal log={editingLog} onClose={() => setEditingLog(null)} onUpdate={handleUpdate} lang={lang} />}
       {viewImage && <ImageViewerModal imageUrl={viewImage} onClose={() => setViewImage(null)} />}
