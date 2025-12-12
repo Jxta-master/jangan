@@ -822,11 +822,10 @@ const PressSummaryTable = ({ logs }) => {
     </div>
   );
 };
-// --- [FIXED] Monthly Report Modal (인쇄 시 배경 숨김 기능 추가) ---
+// --- [FIXED FINAL v8] MonthlyReportModal (인쇄 시 빈 화면/잘림 완벽 해결) ---
 const MonthlyReportModal = ({ logs, date, onClose }) => {
-  // 데이터 가공 로직 (기존과 동일)
   const reportData = useMemo(() => {
-    const data = {}; 
+    const data = {};
     logs.forEach(log => {
       const model = log.vehicleModel;
       if (!data[model]) data[model] = { totalProd: 0, totalDefect: 0, processes: {}, defectCounts: {} };
@@ -865,48 +864,74 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center z-[9999] overflow-y-auto pt-10 pb-10 print:p-0 print:m-0 print:overflow-visible print:bg-white print:inset-auto print:static">
-      
-      {/* [핵심 수정] 인쇄 전용 스타일 추가 
-        - body * { visibility: hidden } : 화면의 모든 요소를 숨깁니다.
-        - #print-section * { visibility: visible } : 오직 보고서 영역만 다시 보이게 합니다.
-        - position: absolute : 보고서를 종이의 맨 위(0,0)로 강제 이동시킵니다.
-      */}
+    // [수정 1] 인쇄 시 부모 컨테이너(검은배경)의 스타일 무력화 (display: block)
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4 print:p-0 print:block print:bg-white print:static print:h-auto">
       <style>{`
         @media print {
+          /* 1. 기본 설정 초기화 */
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            background: white !important;
+          }
+
+          /* 2. 화면의 모든 요소 숨김 */
           body * {
             visibility: hidden;
           }
+
+          /* 3. 인쇄할 영역(#print-section)만 보이게 설정 */
           #print-section, #print-section * {
             visibility: visible;
           }
+
+          /* 4. 인쇄 영역 위치 강제 고정 (절대 좌표 0,0) */
           #print-section {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: auto;
-            margin: 0;
-            padding: 0;
-            background-color: white;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            min-height: 100vh; /* 최소 높이 보장 */
+            margin: 0 !important;
+            padding: 20px !important;
+            background-color: white !important;
             z-index: 99999;
+            
+            /* Flex/Grid 레이아웃 해제하고 일반 문서 흐름으로 변경 */
+            display: block !important; 
+            overflow: visible !important; 
           }
-          /* 불필요한 스크롤바 숨김 */
-          html, body {
-            height: auto;
-            overflow: visible;
+
+          /* 5. 페이지 나누기 확실하게 */
+          .page-break {
+            page-break-after: always;
+            break-after: page;
+            display: block;
+            position: relative;
+            margin-bottom: 50px;
+          }
+          
+          /* 마지막 페이지 빈 종이 방지 */
+          .page-break:last-child {
+            page-break-after: auto;
+            break-after: auto;
+            margin-bottom: 0;
+          }
+
+          /* 6. 인쇄 시 숨길 버튼들 */
+          .no-print {
+            display: none !important;
           }
         }
       `}</style>
 
-      {/* 모달 컨테이너 */}
+      {/* 모달 컨텐츠 */}
       <div 
-        id="print-section" // 👈 여기가 인쇄될 영역입니다
-        className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-2xl md:rounded-lg flex flex-col relative print:shadow-none print:rounded-none"
+        id="print-section"
+        className="bg-white w-full max-w-[210mm] max-h-[90vh] overflow-y-auto shadow-2xl md:rounded-lg flex flex-col relative"
       >
-        
-        {/* 상단 헤더 (인쇄 시 숨김 처리됨 - print:hidden) */}
-        <div className="bg-gray-800 text-white p-4 flex justify-between items-center print:hidden rounded-t-lg sticky top-0 z-50">
+        {/* 상단바 (인쇄 시 숨김) */}
+        <div className="bg-gray-800 text-white p-4 flex justify-between items-center no-print sticky top-0 z-50">
           <h3 className="font-bold flex items-center gap-2"><FileText /> 월간 생산분석 보고서 미리보기</h3>
           <div className="flex gap-2">
             <button onClick={handlePrint} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-bold flex items-center gap-2"><Printer size={16}/> 인쇄</button>
@@ -914,9 +939,9 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
           </div>
         </div>
 
-        {/* 실제 보고서 내용 */}
-        <div className="p-8 text-black h-full">
-          {/* 제목 및 결재란 */}
+        {/* 리포트 본문 */}
+        <div className="p-8 text-black bg-white h-full">
+          {/* 타이틀 & 결재란 */}
           <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-8">
             <div className="text-left">
               <h1 className="text-3xl font-extrabold tracking-widest mb-2">월간 생산분석 보고서</h1>
@@ -938,8 +963,8 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
             </div>
           </div>
 
-          {/* 데이터 루프 */}
-          <div className="space-y-10">
+          {/* 차종별 데이터 루프 */}
+          <div className="block">
             {Object.keys(reportData).length === 0 ? (
               <div className="text-center py-20 text-gray-400">데이터가 없습니다.</div>
             ) : (
@@ -951,13 +976,15 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
                   .slice(0, 5);
 
                 return (
-                  <div key={model} className="break-inside-avoid page-break-after-always mb-8">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="bg-black text-white px-4 py-1 font-bold text-lg rounded-sm">{model}</div>
+                  <div key={model} className="page-break mb-12 border-b-2 border-dashed border-gray-300 pb-8 last:border-0 last:pb-0">
+                    {/* 차종 헤더 */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="bg-black text-white px-4 py-1 font-bold text-xl rounded-sm print:border print:border-black print:text-black print:bg-transparent">{model}</div>
                       <div className="flex-1 h-px bg-black"></div>
                     </div>
 
-                    <div className="flex border border-black mb-4 bg-gray-50">
+                    {/* 요약 박스 */}
+                    <div className="flex border border-black mb-6 bg-gray-50 print:bg-transparent">
                       <div className="flex-1 p-3 text-center border-r border-black">
                         <div className="text-xs text-gray-500 font-bold mb-1">총 생산수량</div>
                         <div className="text-xl font-extrabold">{data.totalProd.toLocaleString()}</div>
@@ -972,11 +999,12 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
                       </div>
                     </div>
 
-                    <div className="flex gap-6">
-                      <div className="flex-1">
+                    {/* 상세 데이터 */}
+                    <div className="flex flex-col gap-6 md:flex-row print:block">
+                      <div className="flex-1 print:mb-6 print:w-full">
                         <h4 className="font-bold text-sm mb-2 border-l-4 border-blue-600 pl-2">공정별 상세 실적</h4>
                         <table className="w-full text-sm border-collapse border border-black">
-                          <thead className="bg-gray-100">
+                          <thead className="bg-gray-100 print:bg-transparent">
                             <tr>
                               <th className="border border-black py-1 px-2">공정명</th>
                               <th className="border border-black py-1 px-2 text-right">생산</th>
@@ -999,12 +1027,12 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
                         </table>
                       </div>
 
-                      <div className="w-[40%]">
+                      <div className="w-full md:w-[45%] print:w-full">
                         <h4 className="font-bold text-sm mb-2 border-l-4 border-red-600 pl-2">불량 유형 TOP 5</h4>
                         <table className="w-full text-sm border-collapse border border-black">
-                          <thead className="bg-gray-100">
+                          <thead className="bg-gray-100 print:bg-transparent">
                             <tr>
-                              <th className="border border-black py-1 px-2 w-10">순위</th>
+                              <th className="border border-black py-1 px-2 w-12 text-center">순위</th>
                               <th className="border border-black py-1 px-2">유형</th>
                               <th className="border border-black py-1 px-2 text-right">수량</th>
                             </tr>
@@ -1014,7 +1042,7 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
                               const item = top5Defects[idx];
                               return (
                                 <tr key={idx}>
-                                  <td className="border border-black py-1 px-2 text-center bg-gray-50">{idx + 1}</td>
+                                  <td className="border border-black py-1 px-2 text-center bg-gray-50 print:bg-transparent">{idx + 1}</td>
                                   <td className="border border-black py-1 px-2">{item ? item.label : '-'}</td>
                                   <td className="border border-black py-1 px-2 text-right font-bold">{item ? item.value : '-'}</td>
                                 </tr>
@@ -1030,7 +1058,7 @@ const MonthlyReportModal = ({ logs, date, onClose }) => {
             )}
           </div>
           
-          <div className="mt-12 text-center text-xs text-gray-400 border-t border-gray-300 pt-2">
+          <div className="mt-8 text-center text-xs text-gray-400 border-t border-gray-300 pt-4 print:mt-10">
             MES Production Management System - Printed on {new Date().toLocaleString()}
           </div>
         </div>
@@ -2051,7 +2079,7 @@ const AdminDashboard = ({ db, appId, lang }) => {
 
       {showReportModal && (
         <MonthlyReportModal 
-          logs={filteredLogs} 
+          logs={logs} 
           date={filterDate}   
           onClose={() => setShowReportModal(false)} 
         />
