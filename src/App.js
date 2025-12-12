@@ -654,7 +654,7 @@ const PressSummaryTable = ({ logs }) => {
 };
 
 const LoginScreen = ({ onLogin }) => {
-  const ADMIN_PASSWORD = '1234abc'; 
+  const ADMIN_PASSWORD = 'jangan123'; 
   const [role, setRole] = useState('worker');
   const [name, setName] = useState('');
   const [adminId, setAdminId] = useState('');
